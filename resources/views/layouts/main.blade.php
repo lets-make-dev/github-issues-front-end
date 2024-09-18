@@ -24,6 +24,7 @@
         <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     </head>
     <body class="bg-gray-100 min-h-screen text-gray-900">
+        <x-banner />
         <header class="bg-gray-900 text-white p-4 sticky top-0 z-50 border-b-4 border-white">
             <div class="container mx-auto flex justify-between items-center">
                 <h1 class="text-3xl font-bold text-white">{{ $repoName ?? 'GitHub Issues Dashboard' }}</h1>

@@ -34,7 +34,9 @@ class GitHubController extends Controller
             $accountName = explode('/', $repository['full_name'])[0];
 
             // find or create the account (for the user)
+            /** @var \App\Models\Account $account */
             $account = $user->accounts()->firstOrCreate([
+                'github_token' => $installationToken,
                 'project_id' => 1,
                 'name' => $accountName
             ]);

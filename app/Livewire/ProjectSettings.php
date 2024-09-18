@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Models\Account;
 use Livewire\Component;
 use App\Models\Project;
 use Illuminate\Support\Facades\Http;
@@ -15,23 +16,75 @@ class ProjectSettings extends Component
     public $githubToken;
     public $githubAccounts = [];
     public $selectedAccount = '';
-    public $repositories = [ 'bytelaunch/my-house' ];
+    public $repositories = [];
 
     public $activeTab = 'general';
 
-    public function mount(
-        Project $project,
-        $tab = 'general'
-    )
-    {
+    protected $listeners = ['accountSelected'];
 
+    public function mount(Project $project, $tab = 'general')
+    {
         $this->project = $project;
         $this->projectName = $project->name;
         $this->projectDescription = $project->description;
         $this->projectVisibility = $project->visibility;
         $this->activeTab = in_array($tab, ['general', 'github', 'users']) ? $tab : 'general';
 
-        $this->githubAccounts = $project->accounts->pluck('name', 'id');
+        $this->githubAccounts = $project->accounts->pluck('name', 'id')->toArray();
+    }
+
+    public function accountSelected($accountId)
+    {
+        $this->selectedAccount = $accountId;
+        $this->loadRepositories();
+    }
+
+    public function loadRepositories()
+    {
+        if ($this->selectedAccount) {
+            $account = Account::find($this->selectedAccount);
+            if ($account) {
+                $this->repositories = $account->repositories()->pluck('name')->toArray();
+            }
+        }
+    }
+
+    public function refreshRepos()
+    {
+        if (!$this->selectedAccount) {
+            session()->flash('error', 'Please select a GitHub account first.');
+            return;
+        }
+
+        $account = Account::find($this->selectedAccount);
+
+        if (!$account) {
+            session()->flash('error', 'Selected account not found.');
+            return;
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $account->github_token,
+                'Accept' => 'application/vnd.github.v3+json',
+            ])->get('https://api.github.com/installation/repositories');
+
+            if ($response->successful()) {
+                $repos = collect($response->json()['repositories'])->pluck('name')->toArray();
+
+                // Update or create repositories
+                foreach ($repos as $repoName) {
+                    $account->repositories()->updateOrCreate(['name' => $repoName]);
+                }
+
+                $this->repositories = $repos;
+                session()->flash('message', 'Repositories refreshed successfully.');
+            } else {
+                session()->flash('error', 'Failed to fetch repositories. Please try again.');
+            }
+        } catch (\Exception $e) {
+            session()->flash('error', 'An error occurred while fetching repositories: ' . $e->getMessage());
+        }
     }
 
     public function updateGeneralSettings()
@@ -77,19 +130,6 @@ class ProjectSettings extends Component
         $this->githubToken = '';
     }
 
-    public function loadRepositories()
-    {
-        ray(1);
-        if ($this->selectedAccount) {
-            $response = Http::withToken(decrypt($this->project->github_token))
-                ->get("https://api.github.com/users/{$this->selectedAccount}/repos");
-
-            if ($response->successful()) {
-                $this->repositories = collect($response->json())->pluck('name')->toArray();
-            }
-        }
-    }
-
     public function selectRepository($repo)
     {
         $this->project->update(['github_repository' => $repo]);
@@ -116,6 +156,7 @@ class ProjectSettings extends Component
     {
         $this->activeTab = in_array($tab, ['general', 'github', 'users']) ? $tab : 'general';
     }
+
 
     public function render()
     {

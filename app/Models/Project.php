@@ -21,4 +21,9 @@ class Project extends Model
     {
         return $this->hasMany(Account::class);
     }
+
+    public function repositories()
+    {
+        return $this->belongsToMany(Repository::class);
+    }
 }

@@ -10,6 +10,7 @@ class Account extends Model
     use HasFactory;
 
     protected $fillable = [
+        'github_token',
         'project_id',
         'name',
     ];
