@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Account;
+use App\Models\Repository;
 use Livewire\Component;
 use App\Models\Project;
 use Illuminate\Support\Facades\Http;
@@ -17,6 +18,7 @@ class ProjectSettings extends Component
     public $githubAccounts = [];
     public $selectedAccount = '';
     public $repositories = [];
+    public $connectedRepositories = [];
 
     public $activeTab = 'general';
 
@@ -31,6 +33,7 @@ class ProjectSettings extends Component
         $this->activeTab = in_array($tab, ['general', 'github', 'users']) ? $tab : 'general';
 
         $this->githubAccounts = $project->accounts->pluck('name', 'id')->toArray();
+        $this->loadConnectedRepositories();
     }
 
     public function accountSelected($accountId)
@@ -145,6 +148,13 @@ class ProjectSettings extends Component
         session()->flash('message', 'GitHub account disconnected successfully.');
     }
 
+    public function disconnectRepository($repoId)
+    {
+        $this->project->repositories()->detach($repoId);
+        $this->loadConnectedRepositories();
+        session()->flash('message', 'Repository disconnected successfully.');
+    }
+
     private function loadGitHubData()
     {
         if ($this->project->github_token) {
@@ -157,9 +167,21 @@ class ProjectSettings extends Component
         $this->activeTab = in_array($tab, ['general', 'github', 'users']) ? $tab : 'general';
     }
 
+    public function loadConnectedRepositories()
+    {
+        $this->connectedRepositories = $this->project->repositories->toArray();
+    }
 
     public function render()
     {
         return view('livewire.project-settings');
+    }
+
+    public function connectRepository($repoName)
+    {
+        $repository = Repository::firstOrCreate(['name' => $repoName]);
+        $this->project->repositories()->syncWithoutDetaching([$repository->id]);
+        $this->loadConnectedRepositories();
+        session()->flash('message', 'Repository connected successfully.');
     }
 }

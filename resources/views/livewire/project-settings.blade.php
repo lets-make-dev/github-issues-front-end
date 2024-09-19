@@ -1,11 +1,11 @@
 @section('title', $project->name . ' - Project Settings - ' . config('app.name', 'Laravel'))
 <div>
-    {{ print_r($repositories, true) }}
     <div x-data="{
         activeTab: @entangle('activeTab'),
         githubAccounts: @entangle('githubAccounts'),
         selectedAccount: @entangle('selectedAccount'),
         repositories: @entangle('repositories'),
+        connectedRepositories: @entangle('connectedRepositories'),
         changeTab(tab) {
             this.$wire.changeTab(tab);
             const url = new URL(window.location);
