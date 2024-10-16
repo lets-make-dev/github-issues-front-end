@@ -169,7 +169,8 @@ class ProjectSettings extends Component
 
     public function loadConnectedRepositories()
     {
-        $this->connectedRepositories = $this->project->repositories->toArray();
+        $this->connectedRepositories = $this->project->repositories->load('account:id,name')->toArray();
+        ray($this->connectedRepositories);
     }
 
     public function render()

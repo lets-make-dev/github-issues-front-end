@@ -2,137 +2,175 @@
 
 namespace App\Livewire;
 
+use Firebase\JWT\JWT;
+use Illuminate\Http\Client\RequestException;
 use Livewire\Component;
+use App\Models\Project;
+use App\Models\Account;
+use Illuminate\Support\Facades\Http;
 
 class Dashboard extends Component
 {
-    public $groupBy = 'none';
-    public $showClosed = false;
+    public $project;
+    public $selectedRepo = '';
+    public $repos = [];
     public $issues = [];
-    public $repoName = 'user/repository'; // Add this line
-    public $repos = ['Admin Dashboard', 'iOS App']; // Add available repos
-    public $selectedRepo = 'Admin Dashboard'; // Default selected repo
+    public $showClosed = false;
+    public $groupBy = 'status';
+    public $search = '';
 
-    public function mount($repoName = null)
+    protected $queryString = ['selectedRepo', 'showClosed', 'groupBy', 'search'];
+
+    public function mount(Project $project)
     {
+        $this->project = $project;
+        $this->repos = $this->project->repositories()->pluck('name')->toArray();
+        if (!empty($this->repos)) {
+            $this->selectedRepo = $this->selectedRepo ?: $this->repos[0];
+            $this->fetchIssues();
+        }
+    }
 
-        if (!auth()->user()->github_token) {
-            return redirect()->route('projects.settings.github-connect', request('project'));
+    public function updatedSelectedRepo()
+    {
+        $this->fetchIssues();
+    }
+
+    public function updatedShowClosed()
+    {
+        $this->fetchIssues();
+    }
+
+    public function updatedSearch()
+    {
+        $this->fetchIssues();
+    }
+
+    public function fetchIssues()
+    {
+        if (empty($this->selectedRepo)) {
+            return;
         }
 
-        $this->repoName = $repoName ?? 'user/repository'; // Update this line
-        // Sample issues data
-        $this->issues = [
-            [
-                'id' => 1,
-                'title' => 'Implement user authentication',
-                'status' => 'Open',
-                'description' => 'We need to add user authentication to the application.',
-                'labels' => ['Feature', 'Security'],
-                'creator' => 'johndoe',
-                'comments' => 3,
-                'milestone' => 'v1.0 Release',
-                'estimated_hours' => 20,
-                'logged_hours' => 5,
-                'estimated_completion_date' => '2023-06-30',
-                'priorities' => ['High', 'Security']
-            ],
-            [
-                'id' => 2,
-                'title' => 'Fix responsive layout on mobile',
-                'status' => 'Open',
-                'description' => 'The layout is broken on mobile devices. We need to make it responsive.',
-                'labels' => ['Bug', 'UI'],
-                'creator' => 'janedoe',
-                'comments' => 2,
-                'milestone' => 'v1.1 Release',
-                'estimated_hours' => 10,
-                'logged_hours' => 3,
-                'estimated_completion_date' => '2023-07-15',
-                'priorities' => ['Medium']
-            ],
-            [
-                'id' => 3,
-                'title' => 'Optimize database queries',
-                'status' => 'Closed',
-                'description' => 'Some database queries are slow. We need to optimize them for better performance.',
-                'labels' => ['Performance', 'Backend'],
-                'creator' => 'bobsmith',
-                'comments' => 5,
-                'milestone' => 'v1.0 Release',
-                'estimated_hours' => 15,
-                'logged_hours' => 15,
-                'estimated_completion_date' => '2023-06-15',
-                'priorities' => ['Medium High', 'Performance']
-            ],
-            [
-                'id' => 4,
-                'title' => 'Add dark mode support',
-                'status' => 'Open',
-                'description' => 'Users have requested a dark mode option. We should implement this feature.',
-                'labels' => ['Feature', 'UI'],
-                'creator' => 'alicejohnson',
-                'comments' => 1,
-                'milestone' => 'v1.2 Release',
-                'estimated_hours' => 25,
-                'logged_hours' => 0,
-                'estimated_completion_date' => '2023-08-01',
-                'priorities' => ['Low', 'User Experience']
-            ],
-            [
-                'id' => 5,
-                'title' => 'Implement email notifications',
-                'status' => 'Open',
-                'description' => 'We need to send email notifications for important events in the application.',
-                'labels' => ['Feature', 'Backend'],
-                'creator' => 'charliebravo',
-                'comments' => 0,
-                'milestone' => 'v1.1 Release',
-                'estimated_hours' => 12,
-                'logged_hours' => 2,
-                'estimated_completion_date' => '2023-07-20',
-                'priorities' => ['Medium', 'User Communication']
-            ]
-        ];
+        $account = $this->project->accounts()->whereHas('repositories', function ($query) {
+            $query->where('name', $this->selectedRepo);
+        })->first();
+
+        if (!$account) {
+            $this->issues = [];
+            return;
+        }
+
+        ray($account->github_token);
+        try {
+            $response = Http::retry(2, 0, function ($exception, $request) use ($account) {
+                if ($exception instanceof RequestException && $exception->response->status() === 401) {
+                    ray('Refreshing token');
+                    $this->refreshGitHubToken($account);
+                    return true;
+                }
+                return false;
+            })->withToken($account->github_token)
+                ->get("https://api.github.com/repos/{$account->name}/{$this->selectedRepo}/issues", [
+                    'state' => $this->showClosed ? 'all' : 'open',
+                    'per_page' => 100,
+                ])
+                ->throw();
+
+            $this->issues = collect($response->json())
+                ->filter(function ($issue) {
+                    return empty($this->search) || stripos($issue['title'], $this->search) !== false;
+                })
+                ->map(function ($issue) {
+                    return [
+                        'title' => $issue['title'],
+                        'description' => $issue['body'],
+                        'status' => $issue['state'],
+                        'creator' => $issue['user']['login'],
+                        'comments' => $issue['comments'],
+                        'labels' => collect($issue['labels'])->pluck('name')->toArray(),
+                        'milestone' => $issue['milestone']['title'] ?? null,
+                        'estimated_hours' => 0, // You might want to add custom logic for this
+                        'priorities' => [], // You might want to add custom logic for this
+                    ];
+                })
+                ->toArray();
+        } catch (RequestException $e) {
+            // Handle request errors
+            $this->issues = [];
+            // You might want to add error handling or logging here
+        }
     }
 
-    public function toggleShowClosed()
-    {
-        $this->showClosed = !$this->showClosed;
-    }
-
-    public function setGroupBy($value)
-    {
-        $this->groupBy = $value;
-    }
 
     public function getGroupedIssuesProperty()
     {
-        if ($this->groupBy === 'none') {
-            return [['name' => 'All Issues', 'issues' => $this->filteredIssues()]];
+        $groupedIssues = collect($this->issues)->groupBy($this->groupBy);
+
+        return $groupedIssues->map(function ($group, $key) {
+            return [
+                'name' => ucfirst($key),
+                'issues' => $group->toArray(),
+            ];
+        })->values()->toArray();
+    }
+
+    public function refreshGitHubToken($account)
+    {
+        $installationId = $this->getInstallationId($account);
+        $newToken = $this->getInstallationToken($installationId);
+
+        $account->update(['github_token' => $newToken]);
+
+        return $newToken;
+    }
+
+    private function getInstallationId($account)
+    {
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $this->generateJWT(),
+            'Accept' => 'application/vnd.github.v3+json',
+        ])->get('https://api.github.com/app/installations');
+
+        $installations = $response->json();
+
+        foreach ($installations as $installation) {
+            if ($installation['account']['login'] === $account->name) {
+                return $installation['id'];
+            }
         }
 
-        return collect($this->filteredIssues())
-            ->groupBy(function ($issue) {
-                return $issue['milestone'] ?? 'No Milestone';
-            })
-            ->map(function ($issues, $name) {
-                return ['name' => $name, 'issues' => $issues];
-            })
-            ->values()
-            ->toArray();
+        throw new \Exception("No installation found for account: {$account->name}");
     }
 
-    private function filteredIssues()
+    private function generateJWT()
     {
-        return collect($this->issues)
-            ->when(!$this->showClosed, function ($collection) {
-                return $collection->where('status', 'Open');
-            })
-            ->values()
-            ->toArray();
+        $privateKeyPath = storage_path('app/hubbub-the-missing-front-end.2024-09-11.private-key.pem');
+        $privateKey = file_get_contents($privateKeyPath);
+
+        $payload = [
+            // issued at time
+            'iat' => time(),
+            // JWT expiration time (10 minutes maximum)
+            'exp' => time() + (10 * 60),
+            // GitHub App's identifier
+            'iss' => config('services.github.app_id')
+        ];
+
+        return JWT::encode($payload, $privateKey, 'RS256');
     }
 
+    private function getInstallationToken($installationId)
+    {
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $this->generateJWT(),
+            'Accept' => 'application/vnd.github.v3+json',
+        ])->post("https://api.github.com/app/installations/{$installationId}/access_tokens");
+
+        $data = $response->json();
+        ray($response->json());
+        return $data['token'];
+    }
     public function render()
     {
         return view('livewire.dashboard');

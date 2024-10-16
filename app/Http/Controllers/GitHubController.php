@@ -108,15 +108,6 @@ class GitHubController extends Controller
         return $response->json()['repositories'];
     }
 
-    private function getInstallationInfo($installationToken)
-    {
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $installationToken,
-            'Accept' => 'application/vnd.github.v3+json',
-        ])->get('https://api.github.com/app/installations/current');
-
-        return $response->json();
-    }
 
     private function generateJWT()
     {
