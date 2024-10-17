@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', \App\Livewire\Dashboard::class);
+Route::get('/', \App\Livewire\Dashboard::class)->middleware('auth');
 
 Route::get('/main', \App\Livewire\Dashboard::class)->name('main');
 
