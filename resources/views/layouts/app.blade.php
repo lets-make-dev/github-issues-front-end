@@ -21,7 +21,7 @@
     <body class="font-sans antialiased">
         <x-banner />
 
-        <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
+        <div class="min-h-screen bg-white dark:bg-[#0d1117]">
             @livewire('navigation-menu')
 
             <!-- Page Heading -->
@@ -36,7 +36,7 @@
 
 
             <!-- Page Content -->
-            <main class="container mx-auto mt-8 px-4">
+            <main class="max-w-7xl mx-auto mt-8 px-4 sm:px-6 lg:px-8">
 
                 <h1 class="text-3xl pb-4">@yield('projectName')</h1>
 

@@ -1,9 +1,9 @@
-<div class="bg-white shadow-lg rounded-lg p-6 border-2 border-gray-900">
+<div class="bg-white dark:bg-gray-800 dark:text-white shadow-lg rounded-lg p-6 border border-gray-300 dark:border-gray-700">
     <div x-data="{ showNewProjectModal: false }">
         <div class="flex flex-col md:flex-row justify-between items-center mb-6">
             <div class="flex items-center space-x-4 mb-4 md:mb-0">
-                <h2 class="text-2xl font-semibold text-gray-900">Project:</h2>
-                <select wire:model="selectedProjectId" class="border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">Project:</h2>
+                <select wire:model="selectedProjectId" class="border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
                     <option value="">Select a project</option>
                     @foreach($projects as $project)
                         <option value="{{ $project->id }}">{{ $project->name }}</option>
@@ -12,7 +12,7 @@
             </div>
             <button
                 @click="showNewProjectModal = true"
-                class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
             >
                 Create New Project
             </button>
@@ -20,41 +20,41 @@
 
         <div class="mt-8">
             <div class="flex justify-between items-center mb-4">
-                <input wire:model.debounce.300ms="search" type="text" placeholder="Search projects..." class="border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                <input wire:model.debounce.300ms="search" type="text" placeholder="Search projects..." class="border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
             </div>
 
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 border-2 border-gray-900">
-                    <thead class="bg-gray-50">
+                <table class="w-full border border-gray-300 dark:border-gray-700">
+                    <thead class="bg-gray-200 dark:bg-gray-900">
                     <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" wire:click="sortBy('name')">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider cursor-pointer" wire:click="sortBy('name')">
                             Name
                             @if ($sortField === 'name')
                                 <span class="ml-1">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
                             @endif
                         </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" wire:click="sortBy('created_at')">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider cursor-pointer" wire:click="sortBy('created_at')">
                             Created At
                             @if ($sortField === 'created_at')
                                 <span class="ml-1">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
                             @endif
                         </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-white uppercase tracking-wider">
                             Actions
                         </th>
                     </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
+                    <tbody class="divide-y divide-gray-300">
                     @foreach ($projects as $project)
                         <tr>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">{{ $project->name }}</div>
+                                <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $project->name }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-500">{{ $project->created_at->format('Y-m-d H:i') }}</div>
+                                <div class="text-sm text-gray-500 dark:text-gray-300">{{ $project->created_at->format('Y-m-d H:i') }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <button wire:click="selectProject('{{ $project->id }}')" class="text-indigo-600 hover:text-indigo-900">Select</button>
+                                <button wire:click="selectProject('{{ $project->id }}')" class="text-indigo-600 hover:text-indigo-900 dark:hover:text-indigo-400">Select</button>
                             </td>
                         </tr>
                     @endforeach
