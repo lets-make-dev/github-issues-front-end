@@ -1,7 +1,7 @@
 @section('projectName', $project->name)
 
 <div>
-    <main class="container mx-auto mt-8 px-4">
+    <main class="max-w-7xl mx-auto mt-8 px-4 sm:px-6 lg:px-8">
         <div class="bg-white shadow-lg rounded-lg p-6 border-2 border-gray-800">
             <div class="text-center py-12">
                 <i class="fas fa-code-branch text-6xl text-gray-800 mb-4"></i>
