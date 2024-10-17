@@ -11,7 +11,6 @@ class GitHubController extends Controller
 {
     public function handleGitHubCallback(Request $request)
     {
-        ray($request->all());
         $code = $request->input('code');
         $installationId = $request->input('installation_id');
 
