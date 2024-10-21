@@ -23,6 +23,7 @@ class Dashboard extends Component
 
     public function mount(Project $project)
     {
+        ray()->clearAll();
         $this->project = $project;
         $this->repos = $this->project->repositories()->pluck('name')->toArray();
         if (!empty($this->repos)) {
@@ -31,7 +32,7 @@ class Dashboard extends Component
         }
     }
 
-    public function updatedSelectedRepo()
+    public function updatedSelectedRepo(): void
     {
         $this->fetchIssues();
     }
@@ -46,7 +47,7 @@ class Dashboard extends Component
         $this->fetchIssues();
     }
 
-    public function fetchIssues()
+    public function fetchIssues(): void
     {
         if (empty($this->selectedRepo)) {
             return;
@@ -61,7 +62,6 @@ class Dashboard extends Component
             return;
         }
 
-        ray($account->github_token);
         try {
             $response = Http::retry(2, 0, function ($exception, $request) use ($account) {
                 if ($exception instanceof RequestException && $exception->response->status() === 401) {
@@ -72,26 +72,26 @@ class Dashboard extends Component
                 return false;
             })->withToken($account->github_token)
                 ->get("https://api.github.com/repos/{$account->name}/{$this->selectedRepo}/issues", [
-                    'state' => $this->showClosed ? 'all' : 'open',
+                    'state'    => $this->showClosed ? 'all' : 'open',
                     'per_page' => 100,
                 ])
                 ->throw();
-
+            ray($response->json());
             $this->issues = collect($response->json())
                 ->filter(function ($issue) {
                     return empty($this->search) || stripos($issue['title'], $this->search) !== false;
                 })
                 ->map(function ($issue) {
                     return [
-                        'title' => $issue['title'],
-                        'description' => $issue['body'],
-                        'status' => $issue['state'],
-                        'creator' => $issue['user']['login'],
-                        'comments' => $issue['comments'],
-                        'labels' => collect($issue['labels'])->pluck('name')->toArray(),
-                        'milestone' => $issue['milestone']['title'] ?? null,
+                        'title'           => $issue['title'],
+                        'description'     => $issue['body'],
+                        'status'          => $issue['state'],
+                        'creator'         => $issue['user']['login'],
+                        'comments'        => $issue['comments'],
+                        'labels'          => collect($issue['labels'])->pluck('name')->toArray(),
+                        'milestone'       => $issue['milestone']['title'] ?? null,
                         'estimated_hours' => 0, // You might want to add custom logic for this
-                        'priorities' => [], // You might want to add custom logic for this
+                        'priorities'      => [], // You might want to add custom logic for this
                     ];
                 })
                 ->toArray();
@@ -109,7 +109,7 @@ class Dashboard extends Component
 
         return $groupedIssues->map(function ($group, $key) {
             return [
-                'name' => ucfirst($key),
+                'name'   => ucfirst($key),
                 'issues' => $group->toArray(),
             ];
         })->values()->toArray();
@@ -129,7 +129,7 @@ class Dashboard extends Component
     {
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $this->generateJWT(),
-            'Accept' => 'application/vnd.github.v3+json',
+            'Accept'        => 'application/vnd.github.v3+json',
         ])->get('https://api.github.com/app/installations');
 
         $installations = $response->json();
@@ -164,13 +164,14 @@ class Dashboard extends Component
     {
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $this->generateJWT(),
-            'Accept' => 'application/vnd.github.v3+json',
+            'Accept'        => 'application/vnd.github.v3+json',
         ])->post("https://api.github.com/app/installations/{$installationId}/access_tokens");
 
         $data = $response->json();
         ray($response->json());
         return $data['token'];
     }
+
     public function render()
     {
         return view('livewire.dashboard');
