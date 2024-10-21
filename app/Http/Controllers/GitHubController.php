@@ -46,8 +46,6 @@ class GitHubController extends Controller
                 'user_id' => $user->id
             ]);
         }
-
-        dd($repositories);
         // You can now do something with the repositories, like storing them in the database
         // or returning them in the response
         return response()->json($repositories);

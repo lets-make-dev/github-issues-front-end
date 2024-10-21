@@ -11,48 +11,51 @@ use Illuminate\Support\Facades\Http;
 class ProjectSettings extends Component
 {
     public Project $project;
-    public $projectName;
-    public $projectDescription;
-    public $projectVisibility;
-    public $githubToken;
-    public $githubAccounts = [];
-    public $selectedAccount = '';
-    public $repositories = [];
-    public $connectedRepositories = [];
+    public string $projectName;
+    public ?string $projectDescription;
+    public string $projectVisibility;
+    public string $githubToken;
+    public array $githubAccounts = [];
+    public string $selectedAccount = '';
+    public array $repositories = [];
+    public array $connectedRepositories = [];
 
-    public $activeTab = 'general';
+    public string $activeTab = 'general';
 
     protected $listeners = ['accountSelected'];
 
-    public function mount(Project $project, $tab = 'general')
+    public function mount(Project $project, $tab = 'general'): void
     {
         $this->project = $project;
         $this->projectName = $project->name;
         $this->projectDescription = $project->description;
         $this->projectVisibility = $project->visibility;
+        $tab = 'github';
         $this->activeTab = in_array($tab, ['general', 'github', 'users']) ? $tab : 'general';
 
         $this->githubAccounts = $project->accounts->pluck('name', 'id')->toArray();
         $this->loadConnectedRepositories();
     }
 
-    public function accountSelected($accountId)
+    public function accountSelected($accountId): void
     {
         $this->selectedAccount = $accountId;
         $this->loadRepositories();
     }
 
-    public function loadRepositories()
+    public function loadRepositories(): void
     {
         if ($this->selectedAccount) {
             $account = Account::find($this->selectedAccount);
             if ($account) {
-                $this->repositories = $account->repositories()->pluck('name')->toArray();
+                $this->repositories = $account->repositories()
+                    ->whereNotIn('id', array_column($this->connectedRepositories, 'id'))
+                    ->pluck('name')->toArray();
             }
         }
     }
 
-    public function refreshRepos()
+    public function refreshRepos(): void
     {
         if (!$this->selectedAccount) {
             session()->flash('error', 'Please select a GitHub account first.');
@@ -90,7 +93,7 @@ class ProjectSettings extends Component
         }
     }
 
-    public function updateGeneralSettings()
+    public function updateGeneralSettings(): void
     {
         $this->validate([
             'projectName' => 'required|string|max:255',
@@ -107,7 +110,7 @@ class ProjectSettings extends Component
         session()->flash('message', 'Project settings updated successfully.');
     }
 
-    public function connectGitHub()
+    public function connectGitHub(): void
     {
         $this->validate([
             'githubToken' => 'required|string',
@@ -133,13 +136,13 @@ class ProjectSettings extends Component
         $this->githubToken = '';
     }
 
-    public function selectRepository($repo)
+    public function selectRepository($repo): void
     {
         $this->project->update(['github_repository' => $repo]);
         session()->flash('message', 'GitHub repository selected successfully.');
     }
 
-    public function disconnectGitHub()
+    public function disconnectGitHub(): void
     {
         $this->project->update(['github_token' => null, 'github_repository' => null]);
         $this->githubAccounts = [];
@@ -148,29 +151,32 @@ class ProjectSettings extends Component
         session()->flash('message', 'GitHub account disconnected successfully.');
     }
 
-    public function disconnectRepository($repoId)
+    public function disconnectRepository($repoId): void
     {
         $this->project->repositories()->detach($repoId);
         $this->loadConnectedRepositories();
         session()->flash('message', 'Repository disconnected successfully.');
     }
 
-    private function loadGitHubData()
+    private function loadGitHubData(): void
     {
         if ($this->project->github_token) {
             $this->connectGitHub();
         }
     }
 
-    public function changeTab($tab)
+    public function changeTab($tab): void
     {
         $this->activeTab = in_array($tab, ['general', 'github', 'users']) ? $tab : 'general';
     }
 
-    public function loadConnectedRepositories()
+    public function loadConnectedRepositories(): void
     {
         $this->connectedRepositories = $this->project->repositories->load('account:id,name')->toArray();
-        ray($this->connectedRepositories);
+
+        if($this->connectedRepositories){
+            $this->loadRepositories();
+        }
     }
 
     public function render()
@@ -178,7 +184,7 @@ class ProjectSettings extends Component
         return view('livewire.project-settings');
     }
 
-    public function connectRepository($repoName)
+    public function connectRepository($repoName): void
     {
         $repository = Repository::firstOrCreate(['name' => $repoName]);
         $this->project->repositories()->syncWithoutDetaching([$repository->id]);
