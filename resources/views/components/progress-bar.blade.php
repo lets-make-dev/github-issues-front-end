@@ -1,7 +1,7 @@
 @props(['issue'])
 
 @if(isset($issue['estimated_hours']) && $issue['estimated_hours'] > 0)
-    <div class="@ flex justify-end items-center text-sm text-gray-600">
+    <div class="@ flex justify-end items-center text-sm text-gray-600 dark:text-gray-300">
         @if(isset($issue['estimated_completion_date']))
             <span class="mr-4">Est. {{ $issue['estimated_completion_date'] }}</span>
         @endif
