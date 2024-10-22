@@ -14,7 +14,6 @@ class GitHubController extends Controller
         $code = $request->input('code');
         $installationId = $request->input('installation_id');
 
-
         $installationToken = $this->getInstallationToken($installationId);
 
         $repositories = $this->getRepositories($installationToken);
@@ -37,24 +36,26 @@ class GitHubController extends Controller
             $account = $user->accounts()->firstOrCreate([
                 'github_token' => $installationToken,
                 'project_id' => 1,
-                'name' => $accountName
+                'name' => $accountName,
             ]);
 
             // find or create the repo
             $account->repositories()->firstOrCreate([
                 'name' => $repository['name'],
-                'user_id' => $user->id
+                'user_id' => $user->id,
             ]);
         }
+
         // You can now do something with the repositories, like storing them in the database
         // or returning them in the response
-        return response()->json($repositories);
+        return to_route('projects.index');
+//        return response()->json($repositories);
     }
 
     private function listInstallations()
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->generateJWT(),
+            'Authorization' => 'Bearer '.$this->generateJWT(),
             'Accept' => 'application/vnd.github.v3+json',
         ])->get('https://api.github.com/app/installations');
 
@@ -64,7 +65,7 @@ class GitHubController extends Controller
     private function getAccessToken($code)
     {
         $response = Http::withHeaders([
-            'Accept' => 'application/json'
+            'Accept' => 'application/json',
         ])
             ->post('https://github.com/login/oauth/access_token', [
                 'client_id' => config('services.github.client_id'),
@@ -80,31 +81,32 @@ class GitHubController extends Controller
         ]);
 
         $data = $response->json();
+
         return $data['access_token'];
     }
 
     private function getInstallationToken($installationId)
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->generateJWT(),
+            'Authorization' => 'Bearer '.$this->generateJWT(),
             'Accept' => 'application/vnd.github.v3+json',
         ])->post("https://api.github.com/app/installations/{$installationId}/access_tokens");
 
         $data = $response->json();
         ray($response->json());
+
         return $data['token'];
     }
 
     private function getRepositories($installationToken)
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $installationToken,
+            'Authorization' => 'Bearer '.$installationToken,
             'Accept' => 'application/vnd.github.v3+json',
-        ])->get('https://api.github.com/installation/repositories');
+        ])->get('https://api.github.com/installation/repositories?per_page=100');
 
         return $response->json()['repositories'];
     }
-
 
     private function generateJWT()
     {
@@ -117,7 +119,7 @@ class GitHubController extends Controller
             // JWT expiration time (10 minutes maximum)
             'exp' => time() + (10 * 60),
             // GitHub App's identifier
-            'iss' => config('services.github.app_id')
+            'iss' => config('services.github.app_id'),
         ];
 
         return JWT::encode($payload, $privateKey, 'RS256');

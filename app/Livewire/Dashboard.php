@@ -2,28 +2,38 @@
 
 namespace App\Livewire;
 
-use Firebase\JWT\JWT;
-use Illuminate\Http\Client\RequestException;
-use Livewire\Component;
+use App\Enums\GithubIssueState;
 use App\Models\Project;
-use App\Models\Account;
+use Firebase\JWT\JWT;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Livewire\Component;
 
 class Dashboard extends Component
 {
-    public $project;
-    public $selectedRepo = '';
-    public $repos = [];
-    public $issues = [];
-    public $showClosed = false;
-    public $groupBy = 'status';
-    public $search = '';
+    public Project $project;
 
-    protected $queryString = ['selectedRepo', 'showClosed', 'groupBy', 'search'];
+    public string $selectedRepo = '';
 
-    public function mount(Project $project)
+    public array $repos = [];
+
+    public array|Collection $issues = [];
+
+    public array|Collection $issuesFiltered = [];
+    public array|Collection $issuesCopy = [];
+
+    public bool $showClosed = false;
+
+    public string $groupBy = '';
+
+    public string $search = '';
+
+    protected array $queryString = ['selectedRepo', 'showClosed', 'groupBy', 'search'];
+
+    public function mount(Project $project): void
     {
-        ray()->clearAll();
         $this->project = $project;
         $this->repos = $this->project->repositories()->pluck('name')->toArray();
         if (!empty($this->repos)) {
@@ -37,14 +47,21 @@ class Dashboard extends Component
         $this->fetchIssues();
     }
 
-    public function updatedShowClosed()
+    public function updatedShowClosed(): void
     {
         $this->fetchIssues();
     }
 
-    public function updatedSearch()
+    public function updatedSearch(): void
     {
-        $this->fetchIssues();
+        if (empty($this->search)) {
+            $this->issues = $this->issuesCopy;
+            return;
+        }
+        $this->issues = collect($this->issues)
+            ->filter(function ($issue) {
+                return empty($this->search) || stripos($issue['title'], $this->search) !== false;
+            });
     }
 
     public function fetchIssues(): void
@@ -53,30 +70,29 @@ class Dashboard extends Component
             return;
         }
 
-        $account = $this->project->accounts()->whereHas('repositories', function ($query) {
-            $query->where('name', $this->selectedRepo);
-        })->first();
+        $account = $this->project->accounts()->whereRelation('repositories', 'name', $this->selectedRepo)->first();
 
         if (!$account) {
             $this->issues = [];
+
             return;
         }
 
         try {
             $response = Http::retry(2, 0, function ($exception, $request) use ($account) {
                 if ($exception instanceof RequestException && $exception->response->status() === 401) {
-                    ray('Refreshing token');
                     $this->refreshGitHubToken($account);
+
                     return true;
                 }
+
                 return false;
             })->withToken($account->github_token)
                 ->get("https://api.github.com/repos/{$account->name}/{$this->selectedRepo}/issues", [
-                    'state'    => $this->showClosed ? 'all' : 'open',
+                    'state'    => $this->showClosed ? GithubIssueState::Closed->value : 'all',
                     'per_page' => 100,
                 ])
                 ->throw();
-            ray($response->json());
             $this->issues = collect($response->json())
                 ->filter(function ($issue) {
                     return empty($this->search) || stripos($issue['title'], $this->search) !== false;
@@ -84,24 +100,24 @@ class Dashboard extends Component
                 ->map(function ($issue) {
                     return [
                         'title'           => $issue['title'],
-                        'description'     => $issue['body'],
+                        'description'     => str()->markdown($issue['body']),
                         'status'          => $issue['state'],
                         'creator'         => $issue['user']['login'],
                         'comments'        => $issue['comments'],
-                        'labels'          => collect($issue['labels'])->pluck('name')->toArray(),
+                        'labels'          => collect($issue['labels'])->pluck('name', 'color')->toArray(),
                         'milestone'       => $issue['milestone']['title'] ?? null,
                         'estimated_hours' => 0, // You might want to add custom logic for this
                         'priorities'      => [], // You might want to add custom logic for this
                     ];
                 })
                 ->toArray();
+            $this->issuesCopy = $this->issues;
         } catch (RequestException $e) {
             // Handle request errors
             $this->issues = [];
             // You might want to add error handling or logging here
         }
     }
-
 
     public function getGroupedIssuesProperty()
     {
@@ -112,9 +128,12 @@ class Dashboard extends Component
                 'name'   => ucfirst($key),
                 'issues' => $group->toArray(),
             ];
-        })->values()->toArray();
+        })->sortByDesc('name')->values()->toArray();
     }
 
+    /**
+     * @throws ConnectionException
+     */
     public function refreshGitHubToken($account)
     {
         $installationId = $this->getInstallationId($account);
@@ -125,6 +144,10 @@ class Dashboard extends Component
         return $newToken;
     }
 
+    /**
+     * @throws ConnectionException
+     * @throws \Exception
+     */
     private function getInstallationId($account)
     {
         $response = Http::withHeaders([
@@ -143,9 +166,10 @@ class Dashboard extends Component
         throw new \Exception("No installation found for account: {$account->name}");
     }
 
-    private function generateJWT()
+    private function generateJWT(): string
     {
         $privateKeyPath = storage_path('app/hubbub-the-missing-front-end.2024-09-11.private-key.pem');
+
         $privateKey = file_get_contents($privateKeyPath);
 
         $payload = [
@@ -154,12 +178,15 @@ class Dashboard extends Component
             // JWT expiration time (10 minutes maximum)
             'exp' => time() + (10 * 60),
             // GitHub App's identifier
-            'iss' => config('services.github.app_id')
+            'iss' => config('services.github.app_id'),
         ];
 
         return JWT::encode($payload, $privateKey, 'RS256');
     }
 
+    /**
+     * @throws ConnectionException
+     */
     private function getInstallationToken($installationId)
     {
         $response = Http::withHeaders([
@@ -168,7 +195,7 @@ class Dashboard extends Component
         ])->post("https://api.github.com/app/installations/{$installationId}/access_tokens");
 
         $data = $response->json();
-        ray($response->json());
+
         return $data['token'];
     }
 

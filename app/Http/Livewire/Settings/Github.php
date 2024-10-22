@@ -7,8 +7,10 @@ use Livewire\Component;
 class Github extends Component
 {
     public $githubAccounts = ['bytelaunch', 'bytelaunch-projects', 'irvine-public-schools-foundation', 'menufreedom', 'WPNerds'];
+
     public $selectedAccount = '';
-    public $repositories = [ 'cat'];
+
+    public $repositories = ['cat'];
 
     public function connect()
     {

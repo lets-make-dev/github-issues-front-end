@@ -2,18 +2,22 @@
 
 namespace App\Livewire;
 
+use App\Models\Project;
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Models\Project;
 
 class ProjectSelector extends Component
 {
     use WithPagination;
 
     public $newProjectName = '';
+
     public $selectedProjectId = '';
+
     public $search = '';
+
     public $sortField = 'name';
+
     public $sortDirection = 'asc';
 
     protected $queryString = ['search', 'sortField', 'sortDirection'];
@@ -28,7 +32,7 @@ class ProjectSelector extends Component
             'name' => $this->newProjectName,
         ]);
 
-        if (!auth()->user()->github_token) {
+        if (! auth()->user()->github_token) {
             return redirect()->route('projects.settings.github-connect', $project);
         }
 

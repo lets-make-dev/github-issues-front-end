@@ -6,13 +6,11 @@ Route::get('/', \App\Livewire\Dashboard::class)->middleware('auth');
 
 Route::get('/main', \App\Livewire\Dashboard::class)->name('main');
 
-
 Route::get('/auth/github/callback', [\App\Http\Controllers\GitHubController::class, 'handleGitHubCallback']);
 
 Route::get('/github/connect', function () {
     return redirect()->to('https://github.com/apps/hubbub-the-missing-front-end/installations/new');
 })->name('github.connect');
-
 
 Route::middleware([
     'auth:sanctum',
@@ -21,7 +19,6 @@ Route::middleware([
 ])->group(function () {
 
     Route::get('/dashboard', \App\Livewire\Dashboard::class)->name('dashboard');
-
 
     Route::get('/projects', \App\Livewire\ProjectSelector::class)
         ->name('projects.index');
@@ -35,9 +32,7 @@ Route::middleware([
     Route::get('/projects/{project}', \App\Livewire\Dashboard::class)
         ->name('projects.show');
 
-
-
-//    Route::get('/dashboard', function () {
-//        return view('dashboard');
-//    })->name('dashboard');
+    //    Route::get('/dashboard', function () {
+    //        return view('dashboard');
+    //    })->name('dashboard');
 });

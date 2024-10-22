@@ -3,21 +3,29 @@
 namespace App\Livewire;
 
 use App\Models\Account;
-use App\Models\Repository;
-use Livewire\Component;
 use App\Models\Project;
+use App\Models\Repository;
 use Illuminate\Support\Facades\Http;
+use Livewire\Component;
 
 class ProjectSettings extends Component
 {
     public Project $project;
+
     public string $projectName;
+
     public ?string $projectDescription;
+
     public string $projectVisibility;
+
     public string $githubToken;
+
     public array $githubAccounts = [];
+
     public string $selectedAccount = '';
+
     public array $repositories = [];
+
     public array $connectedRepositories = [];
 
     public string $activeTab = 'general';
@@ -57,21 +65,23 @@ class ProjectSettings extends Component
 
     public function refreshRepos(): void
     {
-        if (!$this->selectedAccount) {
+        if (! $this->selectedAccount) {
             session()->flash('error', 'Please select a GitHub account first.');
+
             return;
         }
 
         $account = Account::find($this->selectedAccount);
 
-        if (!$account) {
+        if (! $account) {
             session()->flash('error', 'Selected account not found.');
+
             return;
         }
 
         try {
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $account->github_token,
+                'Authorization' => 'Bearer '.$account->github_token,
                 'Accept' => 'application/vnd.github.v3+json',
             ])->get('https://api.github.com/installation/repositories');
 
@@ -89,7 +99,7 @@ class ProjectSettings extends Component
                 session()->flash('error', 'Failed to fetch repositories. Please try again.');
             }
         } catch (\Exception $e) {
-            session()->flash('error', 'An error occurred while fetching repositories: ' . $e->getMessage());
+            session()->flash('error', 'An error occurred while fetching repositories: '.$e->getMessage());
         }
     }
 
@@ -174,7 +184,7 @@ class ProjectSettings extends Component
     {
         $this->connectedRepositories = $this->project->repositories->load('account:id,name')->toArray();
 
-        if($this->connectedRepositories){
+        if ($this->connectedRepositories) {
             $this->loadRepositories();
         }
     }
