@@ -20,3 +20,4 @@ yarn-error.log
 /.vscode
 gethubbub.sqlite3
 .env.staging
+/app/Keys
