@@ -34,6 +34,15 @@
                 </header>
             @endif
 
+             <!-- Flash Messages -->
+             <div class="fixed top-0 right-0 mt-4 mr-4 w-80">
+                <div id="successMessage" class="bg-green-500 text-white p-4 rounded shadow animate__animated animate__fadeIn"  style="display: none;">
+
+                </div>
+                {{-- <div id="errorMessage" class="bg-red-500 text-white p-4 rounded shadow animate__animated animate__fadeIn">
+                </div> --}}
+            </div>
+
 
             <!-- Page Content -->
             <main class="max-w-7xl mx-auto mt-8 px-4 sm:px-6 lg:px-8">

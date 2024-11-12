@@ -1,12 +1,15 @@
 @props(['issue', 'repoName'])
 
-<div class="border-2 dark:border border-gray-900 dark:border-gray-600 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300 transform hover:-translate-y-1 dark:text-white">
+<div class="border-2 dark:border border-gray-900 dark:border-gray-600 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300 transform hover:-translate-y-1 dark:text-white" x-data="issueData">
     <div class="flex justify-between items-start">
+
         <div>
             <h3 class="text-lg font-medium text-gray-900 dark:text-white">{{ $issue['title'] }}</h3>
             <p class="text-sm text-gray-600 dark:text-gray-300">{{ $repoName }}</p>
         </div>
         <div class="flex items-center space-x-2">
+
+
             <span class="{{ $issue['status'] === 'open' ? 'bg-green-100 text-green-800' : 'bg-gray-300 text-gray-800' }} text-xs font-semibold px-2 py-1 rounded-full border">
                 {{ $issue['status'] }}
             </span>
@@ -32,8 +35,12 @@
                     <path stroke-linecap="round" stroke-linejoin="round"
                           d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/>
                 </svg>
-                <span>
-                    {{ $issue['comments'] }} comments</span>
+                {{-- <span @click="showModalCommentsListModel = true;" >{{ $issue['comments'] }} comments</span> --}}
+                <span @click="showModalCommentsListModel = true;" >{{ $issue['comments_count'] }} comments</span>
+                <button @click="showModalAddCommentModel = true" class="rounded">
+                    Add a Comment
+                </button>
+
             </div>
         </div>
     </div>
@@ -49,7 +56,74 @@
             <x-progress-bar :issue="$issue" class="flex-grow ml-4"/>
         @endif
     </div>
+
+    <!-- Add Comment Modal -->
+    <div x-show="showModalAddCommentModel" x-cloak class="fixed inset-0 bg-gray-800 bg-opacity-75 flex justify-center items-center z-50">
+        <div class="bg-white dark:bg-gray-900 dark:text-white p-6 rounded-lg shadow-lg w-full max-w-lg">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-semibold">Comments</h2>
+                <button @click="showModalAddCommentModel = false" class="text-gray-700 dark:text-gray-300 hover:text-red-500">&times;</button>
+            </div>
+            <!-- Comment Submission Form -->
+            <form wire:submit.prevent="addComment({{ $issue['issue_number'] }})" class="mt-6">
+                <label for="newComment" class="block text-gray-700 dark:text-gray-300">Add a New Comment:</label>
+                <textarea wire:model.defer="newComment" id="newComment" rows="3"
+                    class="w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white mt-2"></textarea>
+                @error('newComment')
+                    <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
+                @enderror
+
+                <button type="submit"
+                    class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition duration-200">
+                    Submit Comment
+                </button>
+                <button @click="showModalAddCommentModel = false" class="mt-4 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                    Close
+                </button>
+            </form>
+        </div>
+    </div>
+
+     <!--  Show Comments of Issue Modal-->
+     <div x-show="showModalCommentsListModel" x-cloak class="fixed inset-0 bg-gray-800 bg-opacity-75 flex justify-center items-center z-50">
+        <div class="bg-white dark:bg-gray-900 dark:text-white p-6 rounded-lg shadow-lg w-full max-w-lg">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-semibold">Comments</h2>
+                <ul class="list-disc">
+                    @forelse ($issue['issues_comments'] as $comment)
+                    <li>{{ $comment->content }}</li>
+                    @empty
+                        <p>No Comments</p>
+                    @endforelse
+                  </ul>
+                <button @click="showModalCommentsListModel = false" class="text-gray-700 dark:text-gray-300 hover:text-red-500">&times;</button>
+            </div>
+
+        </div>
+    </div>
+    <script>
+        function issueData() {
+            return {
+                showModalAddCommentModel: false,
+                showModalCommentsListModel: false,
+                init(){
+                     window.addEventListener('commentAddedSucessfully', event => {
+                        this.showModalAddCommentModel = false ;
+                         const messageElement = document.getElementById('successMessage');
+                         messageElement.style.display = 'block';
+                         messageElement.innerHTML  = event.detail;
+                         setTimeout(() => {
+                             messageElement.style.display = 'none';
+                         }, 3000);
+                     });
+                }
+            }
+        }
+     </script>
 </div>
+
+
+
 
 <!-- Static -->
 {{--<div class="border border-gray-300 dark:border-gray-600 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300 transform hover:-translate-y-1 dark:text-white">--}}

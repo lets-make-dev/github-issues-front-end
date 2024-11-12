@@ -1,6 +1,5 @@
 @section('title', 'Dashboard - ' . config('app.name', 'Laravel'))
 
-<div class="bg-white dark:bg-slate-900 dark:text-white shadow-lg rounded-lg p-6 border-2 dark:border border-gray-900 dark:border-gray-600">
     <div>
         <div class="flex flex-col md:flex-row justify-between items-center mb-6">
             <div class="flex items-center space-x-4 mb-4 md:mb-0">
@@ -42,6 +41,8 @@
         </div>
 
         <div class="space-y-8">
+
+
             @foreach($this->groupedIssues as $group)
                 <div class="mb-8">
                     <h3 class="text-xl font-semibold mb-4 pb-2 border-b-2 border-gray-300 dark:border-gray-600">{{ $group['name'] ?: ($showClosed ? 'Closed' : 'All') }}</h3>
