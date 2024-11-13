@@ -107,7 +107,7 @@
                                 <a href="#" class="hover:underline text-sm text-indigo-600">Nirmala</a>
                             </div> -->
                             <div class="bg-gray-100 border-b border-gray-200 text-sm py-2 px-3">
-                                commented 23 minutes ago
+                                commented {{ $comment->created_at->diffForHumans() }} ago
                             </div>
                             <div class="md:text-sm p-3">{{ $comment->content }}</div>
                         </div>
