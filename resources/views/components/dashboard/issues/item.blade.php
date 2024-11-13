@@ -40,9 +40,8 @@
                     <span @click="showModalCommentsListModel = true;" >{{ $issue['comments_count'] }} comments</span>
                 </div>
                 <button @click="showModalAddCommentModel = true" class="rounded">
-                    Add a Comment
+                    <i class="fa-solid fa-plus" title="Add Comment"></i>
                 </button>
-
             </div>
         </div>
     </div>
@@ -107,7 +106,7 @@
                                 <a href="#" class="hover:underline text-sm text-indigo-600">Nirmala</a>
                             </div> -->
                             <div class="bg-gray-100 border-b border-gray-200 text-sm py-2 px-3">
-                                commented {{ $comment->created_at->diffForHumans() }} ago
+                                commented {{ $comment->created_at->diffForHumans() }}
                             </div>
                             <div class="md:text-sm p-3">{{ $comment->content }}</div>
                         </div>
