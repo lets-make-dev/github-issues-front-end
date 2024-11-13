@@ -7,7 +7,7 @@
                 <h2 class="text-xl font-semibold">Comments</h2>
                 <button @click="showModalCommentsListModel = false" class="text-gray-700 dark:text-gray-300 text-3xl absolute top-1 right-2">&times;</button>
             </div>
-            <ul class="flex flex-col space-y-4 mt-4 overflow-auto max-h-[65vh] pr-5">
+            <ul class="scrollbar-thin flex flex-col space-y-4 mt-4 overflow-auto max-h-[65vh] pr-5 ">
                 @forelse ($comments as $comment)
                 <li>
                     <div class="flex items-center space-x-3">
@@ -22,11 +22,11 @@
 
                                 @if ($comment->created_at->diffInMonths() >= 1)
                                     <div class="bg-gray-100 border-b border-gray-200 text-sm py-2 px-3">
-                                        {{ $comment->created_at->format('F j, Y') }}
+                                        commented on  {{ $comment->created_at->format('F j, Y') }}
                                     </div>
                                 @else
                                     <div class="bg-gray-100 border-b border-gray-200 text-sm py-2 px-3">
-                                        {{ $comment->created_at->diffForHumans() }}
+                                        commented {{ $comment->created_at->diffForHumans() }}
                                     </div>
                                 @endif
                                 <div class="md:text-sm p-3">{{ $comment->content }}</div>
@@ -52,4 +52,24 @@
             }
         }
     </script>
+    <style>
+    .addCommentToIssueModel {
+    / For Firefox /
+    scrollbar-width: thin;
+    }
+
+    / For Chrome, Safari, and Edge /
+    .addCommentToIssueModel::-webkit-scrollbar {
+    width: 8px; / Set your desired width /
+    }
+
+    .addCommentToIssueModel::-webkit-scrollbar-thumb {
+    background-color: #888; / Scrollbar color /
+    border-radius: 4px; / Optional: round the scrollbar /
+    }
+
+    .addCommentToIssueModel::-webkit-scrollbar-track {
+    background: #f1f1f1; / Background color of the track /
+    }
+    </style>
 </div>
