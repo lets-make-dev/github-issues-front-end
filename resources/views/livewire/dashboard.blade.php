@@ -49,6 +49,10 @@
                     <x-dashboard.issues.list :issues="$group['issues']" :repo-name="$selectedRepo"/>
                 </div>
             @endforeach
+            <x-dashboard.issues.comment-list-model  :comments="$comments" />
+            <x-dashboard.issues.add-comment-model  />
+
+
         </div>
     </div>
 </div>

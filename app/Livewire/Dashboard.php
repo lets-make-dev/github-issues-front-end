@@ -38,6 +38,10 @@ class Dashboard extends Component
 
     protected array $queryString = ['selectedRepo', 'showClosed', 'groupBy', 'search'];
 
+    public $comments = [];
+
+    public $selectedIssueNumber = '';
+
     public function mount(Project $project): void
     {
         $this->project = $project;
@@ -107,11 +111,7 @@ class Dashboard extends Component
                 })
                 ->map(function ($issue) {
                     $repositoryId = $this->project->repositories()->where('name', $this->selectedRepo)->first()->id;
-                    // $comments = Comment::where('issue_number', $issue['number'])
-                    //     ->where('project_id', $this->project->id)
-                    //     ->where('repository_id', $repositoryId)
-                    //     ->get();
-                    $comments = Comment::byIssueAndProject($issue['number'], $this->project->id, $repositoryId)->get();
+                    $commentsCount = Comment::byIssueAndProject($issue['number'], $this->project->id, $repositoryId)->count();
 
                     return [
                         'title' => $issue['title'],
@@ -125,9 +125,7 @@ class Dashboard extends Component
                         'priorities' => [], // You might want to add custom logic for this
                         'issue_id' => $issue['id'],
                         'issue_number' => $issue['number'],
-                        'issues_comments' => $comments,
-                        'comments_count' => $comments->count(),
-
+                        'comments_count' => $commentsCount,
                     ];
                 })
                 ->toArray();
@@ -153,9 +151,10 @@ class Dashboard extends Component
 
     }
 
-    public function addComment($issueNumber)
+    public function addComment()
     {
         // $this->emit('commentAddedSucessfully', $issueNumber);
+        $issueNumber = $this->selectedIssueNumber;
 
         $this->validate([
             'newComment' => 'required',
@@ -206,6 +205,18 @@ class Dashboard extends Component
 
         return $response;
 
+    }
+
+    public function showComments($issueNumber)
+    {
+        $this->comments = Comment::byIssueAndProject($issueNumber, $this->project->id, $this->project->repositories()->where('name', $this->selectedRepo)->first()->id)->get();
+        $this->dispatch('open-modal');
+    }
+
+    public function showAddCommentModel($issueNumber)
+    {
+        $this->selectedIssueNumber = $issueNumber;
+        $this->dispatch('open-add-comment-modal');
     }
 
     public function render()
