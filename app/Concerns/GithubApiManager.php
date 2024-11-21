@@ -12,8 +12,8 @@ trait GithubApiManager
     private function getInstallationToken($installationId)
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->generateJWT(),
-            'Accept'        => 'application/vnd.github.v3+json',
+            'Authorization' => 'Bearer '.$this->generateJWT(),
+            'Accept' => 'application/vnd.github.v3+json',
         ])->post("https://api.github.com/app/installations/{$installationId}/access_tokens");
 
         $data = $response->json();
@@ -59,8 +59,8 @@ trait GithubApiManager
     private function getInstallationId($account)
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->generateJWT(),
-            'Accept'        => 'application/vnd.github.v3+json',
+            'Authorization' => 'Bearer '.$this->generateJWT(),
+            'Accept' => 'application/vnd.github.v3+json',
         ])->get('https://api.github.com/app/installations');
 
         $installations = $response->json();
@@ -77,8 +77,8 @@ trait GithubApiManager
     private function getRepositories($installationToken)
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $installationToken,
-            'Accept'        => 'application/vnd.github.v3+json',
+            'Authorization' => 'Bearer '.$installationToken,
+            'Accept' => 'application/vnd.github.v3+json',
         ])->get('https://api.github.com/installation/repositories?per_page=100');
 
         return $response->json()['repositories'];

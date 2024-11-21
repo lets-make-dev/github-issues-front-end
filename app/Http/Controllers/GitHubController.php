@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Concerns\GithubApiManager;
 use App\Models\Account;
 use App\Models\User;
-use Firebase\JWT\JWT;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -53,7 +52,7 @@ class GitHubController extends Controller
         // You can now do something with the repositories, like storing them in the database
         // or returning them in the response
         return to_route('projects.index');
-//        return response()->json($repositories);
+        //        return response()->json($repositories);
     }
 
     private function listInstallations()

@@ -13,20 +13,30 @@ a.inline-flex.items-center.px-1.pt-1.border-b-2.border-transparent.text-sm.font-
 
 @layer utilities {
     .scrollbar-thin {
-      scrollbar-width: thin;
-      /* For Firefox */
+        scrollbar-width: thin;
+        /* For Firefox */
     }
 
     .scrollbar-thin::-webkit-scrollbar {
-      width: 8px; /* Adjust this value as needed */
+        width: 8px; /* Adjust this value as needed */
     }
 
     .scrollbar-thin::-webkit-scrollbar-thumb {
-      background-color: rgba(0, 0, 0, 0.5); /* Customize thumb color */
-      border-radius: 10px;
+        background-color: rgba(0, 0, 0, 0.5); /* Customize thumb color */
+        border-radius: 10px;
     }
 
     .scrollbar-thin::-webkit-scrollbar-track {
-      background: transparent; /* Customize track color */
+        background: transparent; /* Customize track color */
     }
-  }
+}
+
+
+@keyframes dot-bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-20px);
+    }
+}

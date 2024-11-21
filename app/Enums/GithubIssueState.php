@@ -10,7 +10,7 @@ enum GithubIssueState: string
     // Optional: Add any helper methods if needed
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::Open => 'Open',
             self::Closed => 'Closed',
         };
