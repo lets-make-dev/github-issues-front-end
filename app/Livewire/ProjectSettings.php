@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Concerns\GithubApiManager;
 use App\Models\Account;
 use App\Models\Project;
 use App\Models\Repository;
@@ -10,6 +11,8 @@ use Livewire\Component;
 
 class ProjectSettings extends Component
 {
+    use GithubApiManager;
+
     public Project $project;
 
     public string $projectName;
@@ -78,28 +81,24 @@ class ProjectSettings extends Component
 
             return;
         }
-
         try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer '.$account->github_token,
-                'Accept' => 'application/vnd.github.v3+json',
-            ])->get('https://api.github.com/installation/repositories');
-
-            if ($response->successful()) {
-                $repos = collect($response->json()['repositories'])->pluck('name')->toArray();
-
+            $refreshToken = $this->refreshGitHubToken($account);
+            $repos = $this->getRepositories($refreshToken);
+            if (count($repos)) {
+                $repos = collect($repos)->pluck('name')->toArray();
                 // Update or create repositories
                 foreach ($repos as $repoName) {
-                    $account->repositories()->updateOrCreate(['name' => $repoName]);
+                    $account->repositories()->updateOrCreate(['name' => $repoName, 'user_id' => $account->user_id]);
                 }
-
                 $this->repositories = $repos;
-                session()->flash('message', 'Repositories refreshed successfully.');
+//                session()->flash('message', 'Repositories refreshed successfully.');
             } else {
-                session()->flash('error', 'Failed to fetch repositories. Please try again.');
+                $this->dispatch('error', 'Failed to fetch repositories. Please try again.');
+//                session()->flash('error', 'Failed to fetch repositories. Please try again.');
             }
         } catch (\Exception $e) {
-            session()->flash('error', 'An error occurred while fetching repositories: '.$e->getMessage());
+            $this->dispatch('error', 'An error occurred while fetching repositories: '.$e->getMessage());
+
         }
     }
 

@@ -209,7 +209,9 @@ class Dashboard extends Component
 
     public function showComments($issueNumber)
     {
-        $this->comments = Comment::byIssueAndProject($issueNumber, $this->project->id, $this->project->repositories()->where('name', $this->selectedRepo)->value('id'))->get();
+        $this->comments = Comment::byIssueAndProject($issueNumber, $this->project->id, $this->project->repositories()
+            ->where('name', $this->selectedRepo)->first()?->id)
+            ->get();
         $this->dispatch('open-modal');
     }
 

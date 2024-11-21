@@ -23,6 +23,15 @@
 "
      x-on:keydown.escape.window="repoOpen = false"
 >
+    <div wire:loading>
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div class="flex space-x-3">
+                <div class="w-4 h-4 bg-white rounded-full animate-[dot-bounce_0.5s_ease-in-out_infinite]"></div>
+                <div class="w-4 h-4 bg-white rounded-full animate-[dot-bounce_0.5s_ease-in-out_0.1s_infinite]"></div>
+                <div class="w-4 h-4 bg-white rounded-full animate-[dot-bounce_0.5s_ease-in-out_0.2s_infinite]"></div>
+            </div>
+        </div>
+    </div>
 
     <h3 class="text-2xl font-semibold mb-4">GitHub Integration</h3>
     <div x-show="!showAccounts && connectedRepositories.length > 0" class="py-4">
@@ -68,23 +77,26 @@
                 </div>
             </div>
         </div>
-        <div x-show="selectedAccountId && filteredRepositories.length > 0" class="mb-6">
+        <div x-show="selectedAccountId" class="mb-6">
             <h3 class="text-xl font-semibold mb-4">Add Repository To Projects <span
                         x-text="filteredRepositories.length"></span></h3>
             <div class="relative" x-ref="dropdownContainer">
                 <div class="flex">
                     <input
-                        x-model="searchTerm"
-                        @input="filterRepositories(); repoOpen = true"
-                        @focus="repoOpen = true"
-                        @click="repoOpen = true"
-                        type="text"
-                        class="w-full border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-gray-500 dark:text-white"
-                        placeholder="Search repositories...">
+                            x-model="searchTerm"
+                            @input="filterRepositories(); repoOpen = true"
+                            @focus="repoOpen = true"
+                            @click="repoOpen = true"
+                            type="text"
+                            class="w-full border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-gray-500 dark:text-white"
+                            placeholder="Search repositories...">
                     <button @click="repoOpen = !repoOpen" type="button"
                             class="ml-2 border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-gray-500">
-                        <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                             fill="currentColor">
+                            <path fill-rule="evenodd"
+                                  d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                                  clip-rule="evenodd"/>
                         </svg>
                     </button>
                 </div>
@@ -105,7 +117,7 @@
                             No matching repositories found
                         </li>
                         <li wire:click="refreshRepos"
-                            class="text-gray-900 dark:text-white cursor-default select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            class="text-gray-900 dark:text-white select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                             role="option">
                             <span class="block truncate">Refresh</span>
                         </li>
@@ -140,6 +152,7 @@
                 </li>
             </template>
         </ul>
+
     </div>
 
 
@@ -149,6 +162,14 @@
                 init() {
                     document.addEventListener('click', (e) => {
                         this.closeDropdownIfClickedOutside(e, this.$refs);
+                    });
+                    window.addEventListener('error', event => {
+                        const messageElement = document.getElementById('errorMessage');
+                        messageElement.style.display = 'block';
+                        messageElement.innerHTML = event.detail;
+                        // setTimeout(() => {
+                        //     messageElement.style.display = 'none';
+                        // }, 3000);
                     });
                 },
                 accountsContainerOpen: false,
@@ -161,7 +182,6 @@
                 searchTerm: '',
                 filteredRepositories: [],
                 disconnectRepo(repoId) {
-                    console.log('wire', this.$wire)
                     this.processingRepos[repoId] = true;
                     this.$wire.disconnectRepository(repoId).then(() => {
                         this.processingRepos[repoId] = false;
