@@ -70,7 +70,7 @@
                         </template>
                         <li class="text-gray-900 dark:text-white cursor-default select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700"
                             role="option">
-                            <a href="{{ route('github.connect') }}"><span
+                            <a href="{{ route('projects.settings.github-connect', ['project' => $this->project->id]) }}"><span
                                         class="block truncate">Add another GitHub Account</span></a>
                         </li>
                     </ul>
@@ -167,9 +167,9 @@
                         const messageElement = document.getElementById('errorMessage');
                         messageElement.style.display = 'block';
                         messageElement.innerHTML = event.detail;
-                        // setTimeout(() => {
-                        //     messageElement.style.display = 'none';
-                        // }, 3000);
+                        setTimeout(() => {
+                            messageElement.style.display = 'none';
+                        }, 3000);
                     });
                 },
                 accountsContainerOpen: false,

@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Concerns\GithubApiManager;
+use App\Concerns\ProjectSelectionCacheManager;
 use App\Models\Account;
 use App\Models\Project;
 use App\Models\Repository;
@@ -11,7 +12,7 @@ use Livewire\Component;
 
 class ProjectSettings extends Component
 {
-    use GithubApiManager;
+    use GithubApiManager, ProjectSelectionCacheManager;
 
     public Project $project;
 
@@ -91,10 +92,10 @@ class ProjectSettings extends Component
                     $account->repositories()->updateOrCreate(['name' => $repoName, 'user_id' => $account->user_id]);
                 }
                 $this->repositories = $repos;
-//                session()->flash('message', 'Repositories refreshed successfully.');
+                //                session()->flash('message', 'Repositories refreshed successfully.');
             } else {
                 $this->dispatch('error', 'Failed to fetch repositories. Please try again.');
-//                session()->flash('error', 'Failed to fetch repositories. Please try again.');
+                //                session()->flash('error', 'Failed to fetch repositories. Please try again.');
             }
         } catch (\Exception $e) {
             $this->dispatch('error', 'An error occurred while fetching repositories: '.$e->getMessage());
@@ -199,5 +200,12 @@ class ProjectSettings extends Component
         $this->project->repositories()->syncWithoutDetaching([$repository->id]);
         $this->loadConnectedRepositories();
         session()->flash('message', 'Repository connected successfully.');
+    }
+
+    public function connectGitHubAccount(Project $project)
+    {
+        $this->cacheProjectId($project->id);
+
+        return redirect()->away('https://github.com/apps/hubbub-the-missing-front-end/installations/new');
     }
 }
