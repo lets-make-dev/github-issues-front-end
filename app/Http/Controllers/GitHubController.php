@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Concerns\GithubApiManager;
+use App\Concerns\ProjectSelectionCacheManager;
 use App\Models\Account;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -10,7 +11,7 @@ use Illuminate\Support\Facades\Http;
 
 class GitHubController extends Controller
 {
-    use GithubApiManager;
+    use GithubApiManager, ProjectSelectionCacheManager;
 
     public function handleGitHubCallback(Request $request)
     {
@@ -27,8 +28,10 @@ class GitHubController extends Controller
             $user = auth()->user();
         }
 
-        $user->update(['github_token' => $installationToken]);
+        $projectId = $this->getCachedProjectId();
+        $this->clearCachedProjectId();
 
+        $user->update(['github_token' => $installationToken]);
         // add repositories to the database
         foreach ($repositories as $repository) {
             // determine the account name from $repository['full_name']
@@ -38,7 +41,7 @@ class GitHubController extends Controller
             /** @var Account $account */
             $account = $user->accounts()->firstOrCreate([
                 'github_token' => $installationToken,
-                'project_id' => 1,
+                'project_id' => $projectId,
                 'name' => $accountName,
             ]);
 
@@ -51,7 +54,7 @@ class GitHubController extends Controller
 
         // You can now do something with the repositories, like storing them in the database
         // or returning them in the response
-        return to_route('projects.index');
+        return to_route('projects.settings', ['project' => $projectId]);
         //        return response()->json($repositories);
     }
 
