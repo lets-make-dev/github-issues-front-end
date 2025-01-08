@@ -26,7 +26,9 @@ class ProjectSettings extends Component
 
     public array $githubAccounts = [];
 
-    public string $selectedAccount = '';
+    public string $selectedFirstAccount = '';
+
+    public string $selectedSecondAccount = '';
 
     public array $repositories = [];
 
@@ -34,7 +36,15 @@ class ProjectSettings extends Component
 
     public string $activeTab = 'general';
 
-    protected $listeners = ['accountSelected'];
+    public array $accountsForFirstDropdown = [];
+
+    public array $accountsForSecondDropdown = [];
+
+    public array $firstAccountRepositories = [];
+
+    public array $secondAccountRepositories = [];
+
+    protected $listeners = ['firstAccountSelected', 'secondAccountSelected'];
 
     public function mount(Project $project, $tab = 'general'): void
     {
@@ -46,38 +56,49 @@ class ProjectSettings extends Component
         $this->activeTab = in_array($tab, ['general', 'github', 'users']) ? $tab : 'general';
 
         $this->githubAccounts = $project->accounts->pluck('name', 'id')->toArray();
+        $this->accountsForFirstDropdown = $this->githubAccounts;
+        $this->accountsForSecondDropdown = $this->githubAccounts;
         $this->loadConnectedRepositories();
     }
 
-    public function accountSelected($accountId): void
+    public function firstAccountSelected($accountId): void
     {
-        $this->selectedAccount = $accountId;
-        $this->loadRepositories();
+        $this->selectedFirstAccount = $accountId;
+        $this->accountsForSecondDropdown = array_diff_key($this->githubAccounts, [$accountId => '']);
+        $this->firstAccountRepositories = $this->loadRepositories($this->selectedFirstAccount);
     }
 
-    public function loadRepositories(): void
+    public function secondAccountSelected($accountId): void
     {
-        if ($this->selectedAccount) {
-            $account = Account::find($this->selectedAccount);
-            if ($account) {
-                $this->repositories = $account->repositories()
-                    ->whereNotIn('id', array_column($this->connectedRepositories, 'id'))
-                    ->pluck('name')->toArray();
-            }
+        $this->selectedSecondAccount = $accountId;
+        $this->accountsForFirstDropdown = array_diff_key($this->githubAccounts, [$accountId => '']);
+        $this->secondAccountRepositories = $this->loadRepositories($this->selectedSecondAccount);
+    }
+
+    public function loadRepositories(string|array $accountId)
+    {
+        $repositories = Repository::query();
+        if (is_array($accountId)) {
+            $repositories = $repositories->whereIn('account_id', $accountId);
+        } else {
+            $repositories = $repositories->where('account_id', $accountId);
         }
+        return $repositories
+            ->whereNotIn('id', array_column($this->connectedRepositories, 'id'))
+            ->pluck('name')->toArray();
     }
 
-    public function refreshRepos(): void
+    public function refreshRepos($accountId): void
     {
-        if (! $this->selectedAccount) {
+        if (!$accountId) {
             session()->flash('error', 'Please select a GitHub account first.');
 
             return;
         }
 
-        $account = Account::find($this->selectedAccount);
+        $account = Account::find($accountId);
 
-        if (! $account) {
+        if (!$account) {
             session()->flash('error', 'Selected account not found.');
 
             return;
@@ -98,7 +119,7 @@ class ProjectSettings extends Component
                 //                session()->flash('error', 'Failed to fetch repositories. Please try again.');
             }
         } catch (\Exception $e) {
-            $this->dispatch('error', 'An error occurred while fetching repositories: '.$e->getMessage());
+            $this->dispatch('error', 'An error occurred while fetching repositories: ' . $e->getMessage());
 
         }
     }
@@ -106,15 +127,15 @@ class ProjectSettings extends Component
     public function updateGeneralSettings(): void
     {
         $this->validate([
-            'projectName' => 'required|string|max:255',
+            'projectName'        => 'required|string|max:255',
             'projectDescription' => 'nullable|string',
-            'projectVisibility' => 'required|in:public,private',
+            'projectVisibility'  => 'required|in:public,private',
         ]);
 
         $this->project->update([
-            'name' => $this->projectName,
+            'name'        => $this->projectName,
             'description' => $this->projectDescription,
-            'visibility' => $this->projectVisibility,
+            'visibility'  => $this->projectVisibility,
         ]);
 
         session()->flash('message', 'Project settings updated successfully.');
@@ -132,9 +153,9 @@ class ProjectSettings extends Component
             if ($response->successful()) {
                 $user = $response->json();
                 $this->githubAccounts = [$user['login']];
-                $this->selectedAccount = $user['login'];
+                $this->selectedFirstAccount = $user['login'];
                 $this->project->update(['github_token' => encrypt($this->githubToken)]);
-                $this->loadRepositories();
+                $this->loadRepositories($this->selectedFirstAccount);
                 session()->flash('message', 'GitHub account connected successfully.');
             } else {
                 session()->flash('error', 'Failed to connect GitHub account. Please check your token.');
@@ -156,16 +177,29 @@ class ProjectSettings extends Component
     {
         $this->project->update(['github_token' => null, 'github_repository' => null]);
         $this->githubAccounts = [];
-        $this->selectedAccount = '';
+        $this->selectedFirstAccount = '';
         $this->repositories = [];
         session()->flash('message', 'GitHub account disconnected successfully.');
     }
 
     public function disconnectRepository($repoId): void
     {
+//        $accountId = $this->project->repositories()->find($repoId)->account_id;
         $this->project->repositories()->detach($repoId);
         $this->loadConnectedRepositories();
+        $this->updateRepositories();
+
         session()->flash('message', 'Repository disconnected successfully.');
+    }
+
+    private function updateRepositories(): void
+    {
+        if ($this->selectedFirstAccount) {
+            $this->firstAccountRepositories = $this->loadRepositories($this->selectedFirstAccount);
+        }
+        if ($this->selectedSecondAccount) {
+            $this->secondAccountRepositories = $this->loadRepositories($this->selectedSecondAccount);
+        }
     }
 
     private function loadGitHubData(): void
@@ -184,9 +218,9 @@ class ProjectSettings extends Component
     {
         $this->connectedRepositories = $this->project->repositories->load('account:id,name')->toArray();
 
-        if ($this->connectedRepositories) {
-            $this->loadRepositories();
-        }
+//        if ($this->connectedRepositories) {
+//            ${$this->selectedFirstAccount == $accountId ? 'firstAccountRepositories' : 'secondAccountRepositories'} = $this->loadRepositories($accountId);
+//        }
     }
 
     public function render()
@@ -199,6 +233,7 @@ class ProjectSettings extends Component
         $repository = Repository::firstOrCreate(['name' => $repoName]);
         $this->project->repositories()->syncWithoutDetaching([$repository->id]);
         $this->loadConnectedRepositories();
+        $this->updateRepositories();
         session()->flash('message', 'Repository connected successfully.');
     }
 

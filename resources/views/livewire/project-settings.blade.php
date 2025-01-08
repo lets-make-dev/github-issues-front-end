@@ -3,6 +3,10 @@
     <div x-data="{
         activeTab: @entangle('activeTab'),
         githubAccounts: @entangle('githubAccounts'),
+        accountsForFirstDropdown: @entangle('accountsForFirstDropdown'),
+        accountsForSecondDropdown: @entangle('accountsForSecondDropdown'),
+        firstAccountRepositories: @entangle('firstAccountRepositories'),
+        secondAccountRepositories: @entangle('secondAccountRepositories'),
         selectedAccount: @entangle('selectedAccount'),
         repositories: @entangle('repositories'),
         connectedRepositories: @entangle('connectedRepositories'),
