@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Concerns\GithubApiManager;
-use App\Concerns\ProjectSelectionCacheManager;
-use App\Models\Account;
 use App\Models\User;
+use App\Models\Account;
 use Illuminate\Http\Request;
+use App\Concerns\GithubApiManager;
 use Illuminate\Support\Facades\Http;
+use App\Actions\GitHub\GetLatestLabels;
+use App\Concerns\ProjectSelectionCacheManager;
 
 class GitHubController extends Controller
 {
@@ -45,11 +46,20 @@ class GitHubController extends Controller
                 'name' => $accountName,
             ]);
 
+            $ownerLogin = $repository['owner']['login'];
+            $repoName = $repository['name'];
+
+            // fetch labels and store them
+
+            $labels = (new GetLatestLabels)->getLabel($installationToken, $ownerLogin, $repoName);
+
             // find or create the repo
             $account->repositories()->firstOrCreate([
-                'name' => $repository['name'],
+                'name' => $repoName,
                 'user_id' => $user->id,
+                'labels' => json_encode($labels)
             ]);
+
         }
 
         // You can now do something with the repositories, like storing them in the database

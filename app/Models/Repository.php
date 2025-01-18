@@ -12,6 +12,7 @@ class Repository extends Model
     protected $fillable = [
         'name',
         'user_id',
+        'labels'
     ];
 
     public function account()

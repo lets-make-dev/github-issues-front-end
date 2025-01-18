@@ -2,15 +2,20 @@
 
 namespace App\Livewire;
 
-use App\Concerns\GithubApiManager;
-use App\Enums\GithubIssueState;
+use Exception;
+use App\Models\Issue;
+use App\Models\Account;
 use App\Models\Comment;
 use App\Models\Project;
-use Exception;
-use Illuminate\Http\Client\RequestException;
+use Livewire\Component;
+use App\Models\Repository;
+use Illuminate\Support\Js;
+use App\Enums\GithubIssueState;
+use App\Models\GitHubIntegration;
+use App\Concerns\GithubApiManager;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Livewire\Component;
+use Illuminate\Http\Client\RequestException;
 
 class Dashboard extends Component
 {
@@ -42,19 +47,81 @@ class Dashboard extends Component
 
     public $selectedIssueNumber = '';
 
+    public $accounts = [];
+
+    public $selectedAccount = '';
+
+    public $showCreateButton = false;
+
+    public $title = '';
+
+    public $description = '';
+
+    public $allLabels = [];
+
+    public $labels = [];
+
+    public $primeryAccountId = '';
+
+    public $integratedAccounts;
+
     public function mount(Project $project): void
     {
         $this->project = $project;
-        $this->repos = $this->project->repositories()->pluck('name')->toArray();
-        if (! empty($this->repos)) {
+
+        // Fetch integrated accounts safely
+        $integration = GitHubIntegration::select('account_from', 'account_to')
+            ->where('project_id', $this->project->id)
+            ->first();
+
+        if ($integration) {
+            $this->integratedAccounts = $integration->toArray();
+            $this->primeryAccountId = $this->integratedAccounts['account_from'];
+
+            // Fetch accounts using a reusable query method
+            $this->accounts = $this->getAccountQuery()->pluck('name', 'id');
+        } else {
+            $this->integratedAccounts = [];
+            $this->accounts = [];
+        }
+
+        // Handle repos
+        if (!empty($this->repos)) {
             $this->selectedRepo = $this->selectedRepo ?: $this->repos[0];
             $this->fetchIssues();
         }
     }
 
+    // Reusable query method
+    public function getAccountQuery()
+    {
+        return Account::whereIn('id', array_values($this->integratedAccounts));
+    }
+
+
+    public function updatedSelectedAccount(): void
+    {
+        if($this->selectedAccount == "null")
+        {
+            $this->repos = [];
+            // $this->showCreateButton = false;
+            return;
+        }
+
+        $this->repos = Repository::where('account_id', $this->selectedAccount)->pluck('name')->toArray();
+        // $this->showCreateButton = true;
+    }
+
     public function updatedSelectedRepo(): void
     {
-        $this->fetchIssues();
+        if($this->selectedRepo != "null")
+        {
+            $this->showCreateButton = true;
+            $this->fetchIssues();
+            $this->allLabels = json_decode(Repository::where(['account_id' => $this->selectedAccount],['name' => $this->selectedRepo])->value('labels'));
+            return;
+        }
+            $this->showCreateButton = false;
     }
 
     public function updatedShowClosed(): void
@@ -80,8 +147,7 @@ class Dashboard extends Component
         if (empty($this->selectedRepo)) {
             return;
         }
-
-        $account = $this->project->accounts()->whereRelation('repositories', 'name', $this->selectedRepo)->first();
+        $account = $this->getAccountQuery()->whereRelation('repositories', 'name', $this->selectedRepo)->first();
 
         if (! $account) {
             $this->issues = [];
@@ -110,7 +176,7 @@ class Dashboard extends Component
                     return empty($this->search) || stripos($issue['title'], $this->search) !== false;
                 })
                 ->map(function ($issue) {
-                    $repositoryId = $this->project->repositories()->where('name', $this->selectedRepo)->first()->id;
+                    $repositoryId = $this->project->repositories()->where('name', $this->selectedRepo)->first()?->id;
                     $commentsCount = Comment::byIssueAndProject($issue['number'], $this->project->id, $repositoryId)->count();
 
                     return [
@@ -221,9 +287,72 @@ class Dashboard extends Component
         $this->dispatch('open-add-comment-modal');
     }
 
+    public function showNewIssueModel()
+    {
+        $this->dispatch('open-new-issue-modal');
+    }
+
     public function render()
     {
         return view('livewire.dashboard');
+    }
+
+    public function createIssue()
+    {
+        $this->validate([
+            'title' => 'required|max:255',
+            'description' => 'required',
+        ]);
+        $message = 'GitHubbub';
+        // try {
+            if(array_intersect(json_decode($this->project->gitHubIntegrations()->first()->labels), $this->labels))
+            {
+                $this->createGithubIssue($this->title, $this->description);
+                $message = 'GitHub';
+            }
+            Issue::create([
+                'title' => $this->title,
+                'body' => $this->description,
+                'project_id' => $this->project->id,
+                'repository_name' => $this->selectedRepo,
+                'github_issue_id' => $response['id']??null,
+                'labels' => json_encode($this->labels),
+                'account_id' => $this->getAccountQuery()->whereRelation('repositories', 'name', $this->selectedRepo)->first()->id
+            ]);
+
+            $this->dispatch('issueCreatedSucessfully', "Issue successfully created on $message.");
+
+            $this->title = '';
+            $this->description = '';
+            $this->labels = [];
+            $this->fetchIssues();
+        // } catch (Exception $e) {
+        //     session()->flash('error', 'Could not create issue. Please try again later.');
+        // }
+    }
+
+    public function createGithubIssue($title, $description)
+    {
+        try {
+            $account = $this->getAccountQuery()->whereRelation('repositories', 'name', $this->selectedRepo)->first();
+                $response = Http::withToken($account->github_token)
+                    ->withHeaders(['Accept' => 'application/vnd.github.v3+json'])
+                    ->post("https://api.github.com/repos/{$account->name}/{$this->selectedRepo}/issues", [
+                        'title' => $title,
+                        'body' => $description,
+                        'labels' => $this->labels
+                    ])->json();
+
+            return $response;
+
+        } catch (Exception $e) {
+            session()->flash('error', 'Could not create issue. Please try again later.');
+        }
+    }
+
+    public function saveSelectedLabels($labels)
+    {
+        $this->labels = $labels;
     }
 }
 // Check if the response is successful

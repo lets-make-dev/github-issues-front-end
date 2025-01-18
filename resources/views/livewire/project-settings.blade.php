@@ -7,9 +7,15 @@
         accountsForSecondDropdown: @entangle('accountsForSecondDropdown'),
         firstAccountRepositories: @entangle('firstAccountRepositories'),
         secondAccountRepositories: @entangle('secondAccountRepositories'),
-        selectedAccount: @entangle('selectedAccount'),
+        {{-- selectedAccount: @entangle('selectedAccount'), --}}
         repositories: @entangle('repositories'),
         connectedRepositories: @entangle('connectedRepositories'),
+        selectedLables: @entangle('selectedLables'),
+        selectedFirstAccount: @entangle('selectedFirstAccount'),
+        selectedSecondAccount: @entangle('selectedSecondAccount'),
+        firstSelectedRepo: @entangle('firstSelectedRepo'),
+        secondSelectedRepo: @entangle('secondSelectedRepo'),
+        fieldDisabled: @entangle('fieldDisabled'),
         changeTab(tab) {
             this.$wire.changeTab(tab);
             const url = new URL(window.location);

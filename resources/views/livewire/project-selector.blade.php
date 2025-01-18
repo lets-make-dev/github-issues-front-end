@@ -3,12 +3,12 @@
         <div class="flex flex-col md:flex-row justify-between items-center mb-6">
             <div class="flex items-center space-x-4 mb-4 md:mb-0">
                 <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">Project:</h2>
-                <select wire:model="selectedProjectId" class="border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                {{-- <select wire:model="selectedProjectId" class="border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
                     <option value="">Select a project</option>
                     @foreach($projects as $project)
                         <option value="{{ $project->id }}">{{ $project->name }}</option>
                     @endforeach
-                </select>
+                </select> --}}
             </div>
             <button
                 @click="showNewProjectModal = true"
@@ -20,7 +20,7 @@
 
         <div class="mt-8">
             <div class="flex justify-between items-center mb-4">
-                <input wire:model.debounce.300ms="search" type="text" placeholder="Search projects..." class="border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                <input wire:model.live.300ms="search" type="text" placeholder="Search projects..." class="border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
             </div>
 
             <div class="overflow-x-auto">

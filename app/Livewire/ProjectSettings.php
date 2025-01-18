@@ -7,6 +7,7 @@ use App\Concerns\ProjectSelectionCacheManager;
 use App\Models\Account;
 use App\Models\Project;
 use App\Models\Repository;
+use App\Models\GitHubIntegration;
 use Illuminate\Support\Facades\Http;
 use Livewire\Component;
 
@@ -44,7 +45,15 @@ class ProjectSettings extends Component
 
     public array $secondAccountRepositories = [];
 
-    protected $listeners = ['firstAccountSelected', 'secondAccountSelected'];
+    public array $selectedLables = [];
+
+    public string $firstSelectedRepo = '';
+
+    public string $secondSelectedRepo = '';
+
+    public string $fieldDisabled = '';
+
+    protected $listeners = ['firstAccountSelected', 'secondAccountSelected', 'selectLables', 'syncAccount'];
 
     public function mount(Project $project, $tab = 'general'): void
     {
@@ -54,11 +63,22 @@ class ProjectSettings extends Component
         $this->projectVisibility = $project->visibility;
         $tab = 'github';
         $this->activeTab = in_array($tab, ['general', 'github', 'users']) ? $tab : 'general';
-
-        $this->githubAccounts = $project->accounts->pluck('name', 'id')->toArray();
+        // $this->githubAccounts = $project->accounts->pluck('name', 'id')->toArray();
+        $this->githubAccounts = auth()->user()->accounts->pluck('name', 'id')->toArray();
         $this->accountsForFirstDropdown = $this->githubAccounts;
         $this->accountsForSecondDropdown = $this->githubAccounts;
         $this->loadConnectedRepositories();
+
+        $integratedAccounts = $this->project->gitHubIntegrations()?->first();
+
+        if ($integratedAccounts) {
+            $this->selectedFirstAccount = $integratedAccounts->account_from;
+            $this->selectedSecondAccount = $integratedAccounts->account_to;
+            $this->firstSelectedRepo = $integratedAccounts->repo_from;
+            $this->secondSelectedRepo = $integratedAccounts->repo_to;
+            $this->selectedLables = json_decode($integratedAccounts->labels);
+            $this->fieldDisabled = 'disabled';
+        }
     }
 
     public function firstAccountSelected($accountId): void
@@ -73,6 +93,17 @@ class ProjectSettings extends Component
         $this->selectedSecondAccount = $accountId;
         $this->accountsForFirstDropdown = array_diff_key($this->githubAccounts, [$accountId => '']);
         $this->secondAccountRepositories = $this->loadRepositories($this->selectedSecondAccount);
+    }
+
+    public function selectLables($repo)
+    {
+        $labels = json_decode(Repository::where('name', $repo)->value('labels'));
+        if(!$labels)
+        {
+            $this->selectedLables = [];
+            return;
+        }
+        $this->selectedLables = array_column($labels, 'name');
     }
 
     public function loadRepositories(string|array $accountId)
@@ -242,5 +273,29 @@ class ProjectSettings extends Component
         $this->cacheProjectId($project->id);
 
         return redirect()->away('https://github.com/apps/hubbub-the-missing-front-end/installations/new');
+    }
+
+    public function syncAccount($data)
+    {
+        $data['last_sync_at'] = now();
+        $data['labels'] = json_encode($data['labels']);
+        $data['project_id'] = $this->project?->id;
+
+        // Update or create GitHubIntegration
+        $this->project->gitHubIntegrations()->updateOrCreate(
+            [
+                'account_from' => $data['account_from'],
+                'account_to' => $data['account_to'],
+                'repo_from' => $data['repo_from'],
+                'repo_to' => $data['repo_to'],
+            ],
+            [
+                'labels' => $data['labels'],
+                'last_sync_at' => $data['last_sync_at'],
+            ]
+        );
+
+        session()->flash('message', 'Account synced successfully.');
+        return redirect()->route('projects.show', $this->project?->id);
     }
 }

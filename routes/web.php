@@ -2,7 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', \App\Livewire\Dashboard::class)->middleware('auth');
+Route::get('/', function(){
+    return redirect()->route('projects.index');
+})->middleware('auth');
+// Route::get('/', \App\Livewire\Dashboard::class)->middleware('auth');
 
 Route::get('/main', \App\Livewire\Dashboard::class)->name('main');
 

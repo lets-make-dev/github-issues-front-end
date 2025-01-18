@@ -20,6 +20,8 @@
      x-init="
     $watch('$wire.connectedRepositories', value => connectedRepositories = value);
     $watch('firstAccountRepositories', value => { filterFirstAccountRepositories(); });
+    $watch('selectedLables', value => { filteredRepoLabels(); });
+    {{-- $watch('repositorieLabel', value => { filteredRepoLabels(); }); --}}
     $watch('secondAccountRepositories', value => { filterSecondAccountRepositories(); });
 "
      x-on:keydown.escape.window="firstRepoOpen = false; secondRepoOpen = false"
@@ -63,7 +65,7 @@
                         <div x-show="firstAccountOpenContainer" @click.away="firstAccountOpenContainer = false"
                              class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm dark:text-white">
                             <ul tabindex="-1" role="listbox" aria-labelledby="listbox-label"
-                                aria-activedescendant="listbox-option-3">
+                                aria-activedescendant="listbox-option-3" :class="{ 'pointer-events-none opacity-50': fieldDisabled }">
                                 <template x-for="(name, id) in accountsForFirstDropdown" :key="id">
                                     <li @click="selectedFirstAccountId = id; firstAccountOpenContainer = false; $wire.firstAccountSelected(id)"
                                         class="text-gray-900 dark:text-white cursor-default select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -86,7 +88,7 @@
                     <div class="relative" x-ref="firstDropdownContainer">
                         <div class="flex">
                             <input
-                                    x-model="searchTerm"
+                                    x-model="firstSearchTerm"
                                     @input="filterFirstAccountRepositories(); firstRepoOpen = true"
                                     @focus="firstRepoOpen = true"
                                     @click="firstRepoOpen = true"
@@ -107,10 +109,10 @@
                         <div x-show="firstRepoOpen"
                              class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
                             <ul tabindex="-1" role="listbox" aria-labelledby="listbox-label"
-                                aria-activedescendant="listbox-option-3">
+                                aria-activedescendant="listbox-option-3" :class="{ 'pointer-events-none opacity-50': fieldDisabled }">
                                 {{--                        <span x-text="JSON.stringify(filteredFirstAccountRepositories)"></span>--}}
                                 <template x-for="repo in filteredFirstAccountRepositories">
-                                    <li @click="selectedRepo = null; firstRepoOpen = false; searchTerm = ''"
+                                    <li @click="selectedRepo = repo; firstRepoOpen = false; firstSearchTerm = repo; $wire.selectLables(repo)"
                                         class="text-gray-900 dark:text-white cursor-default select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700"
                                         role="option">
                                         <span class="block truncate" x-text="repo"></span>
@@ -130,11 +132,14 @@
                     </div>
                 </div>
 
-                <button
+
+
+
+                {{-- <button
                         x-show="connectedRepositories.length > 0"
                         @click="showAccounts = !showAccounts" class="text-blue-600 hover:text-blue-800 mr-2">
                     Hide
-                </button>
+                </button> --}}
             </div>
 
 
@@ -160,7 +165,7 @@
                         <div x-show="secondAccountOpenContainer" @click.away="secondAccountOpenContainer = false"
                              class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm dark:text-white">
                             <ul tabindex="-1" role="listbox" aria-labelledby="listbox-label"
-                                aria-activedescendant="listbox-option-3">
+                                aria-activedescendant="listbox-option-3" :class="{'pointer-events-none opacity-50': fieldDisabled}">
                                 <template x-for="(name, id) in accountsForSecondDropdown" :key="id">
                                     <li @click="selectedSecondAccountId = id; secondAccountOpenContainer = false; $wire.secondAccountSelected(id)"
                                         class="text-gray-900 dark:text-white cursor-default select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -183,7 +188,7 @@
                     <div class="relative" x-ref="secondDropdownContainer">
                         <div class="flex">
                             <input
-                                    x-model="searchTerm"
+                                    x-model="secondSearchTerm"
                                     @input="filterSecondAccountRepositories(); secondRepoOpen = true"
                                     @focus="secondRepoOpen = true"
                                     @click="secondRepoOpen = true"
@@ -204,10 +209,11 @@
                         <div x-show="secondRepoOpen"
                              class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
                             <ul tabindex="-1" role="listbox" aria-labelledby="listbox-label"
-                                aria-activedescendant="listbox-option-3">
+                                aria-activedescendant="listbox-option-3" :class="{ 'pointer-events-none opacity-50': fieldDisabled }">
                                 {{--                        <span x-text="JSON.stringify(filteredRepositories)"></span>--}}
                                 <template x-for="repo in filteredSecondAccountRepositories">
-                                    <li @click="$wire.connectRepository(repo); selectedRepo = null; secondRepoOpen = false; searchTerm = ''"
+                                    <li @click="secondRepoOpen = false; secondSearchTerm = repo"
+                                    {{-- <li @click="$wire.connectRepository(repo); selectedRepo = null; secondRepoOpen = false; searchTerm = ''" --}}
                                         class="text-gray-900 dark:text-white cursor-default select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700"
                                         role="option">
                                         <span class="block truncate" x-text="repo"></span>
@@ -228,7 +234,78 @@
                 </div>
             </div>
         </div>
+        {{-- add labels --}}
 
+                <div x-show="firstSearchTerm && secondSearchTerm" class="mb-6" @click.away="repoLabelOpen = false">
+                    <h3 class="text-xl font-semibold mb-4">Add labels</h3>
+                    <div class="relative" x-ref="firstLabelDropdownContainer">
+                        <div class="flex flex-wrap gap-2 mb-2">
+                            <!-- Display selected labels -->
+                            <template x-for="(label, index) in selectedLabels" :key="index">
+                                <div class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-md px-3 py-1 flex items-center space-x-2">
+                                    <span x-text="label"></span>
+                                    <button @click="removeLabel(index)" type="button" class="text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                                        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+
+                        <div class="flex">
+                            <input
+                                    x-model="labelSearchTerm"
+                                    @input="filteredRepoLabels(); repoLabelOpen = true"
+                                    @focus="repoLabelOpen = true"
+                                    @click="repoLabelOpen = true"
+                                    type="text"
+                                    class="w-full border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-gray-500 dark:text-white"
+                                    placeholder="Search labels...">
+                            <button @click="repoLabelOpen = !repoLabelOpen" type="button"
+                                    class="border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-gray-500">
+                                <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg"
+                                     viewBox="0 0 20 20"
+                                     fill="currentColor">
+                                    <path fill-rule="evenodd"
+                                          d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                                          clip-rule="evenodd"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div x-show="repoLabelOpen"
+                             class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                            <ul tabindex="-1" role="listbox" aria-labelledby="listbox-label"
+                                aria-activedescendant="listbox-option-3">
+                                <template x-for="label in filteredRepositorieLabels" :key="label">
+                                    <li @click="toggleLabelSelection(label)"
+                                        :class="{'bg-gray-100 dark:bg-gray-700': isLabelSelected(label)}"
+                                        class="text-gray-900 dark:text-white cursor-default select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                        role="option">
+                                        <span class="block truncate" x-text="label"></span>
+                                    </li>
+                                </template>
+                                <li x-show="filteredRepositorieLabels.length === 0"
+                                    class="text-gray-500 cursor-default select-none relative py-2 pl-3 pr-9">
+                                    No matching labels found
+                                </li>
+                                <li wire:click="refreshRepos(selectedFirstAccountId)"
+                                    class="text-gray-900 dark:text-white select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                                    role="option">
+                                    <span class="block truncate">Refresh</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <button
+                    @click="accountSync()"
+                    x-show="selectedLabels.length > 0"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+                    Sync Accounts
+                </button>
     </div>
 
     <div class="mb-6" x-show="connectedRepositories.length > 0">
@@ -258,6 +335,17 @@
         function initGithubData() {
             return {
                 init() {
+                    if(this.selectedFirstAccount && this.selectedSecondAccount)
+                    {
+                        this.selectedFirstAccountId = this.selectedFirstAccount ? this.selectedFirstAccount : null;
+                        this.selectedSecondAccountId = this.selectedSecondAccount ? this.selectedSecondAccount : null;
+                        this.$wire.firstAccountSelected(this.selectedFirstAccountId);
+                        this.$wire.secondAccountSelected(this.selectedSecondAccountId);
+                        this.firstSearchTerm = this.firstSelectedRepo ? this.firstSelectedRepo : '';
+                        this.secondSearchTerm = this.secondSelectedRepo ? this.secondSelectedRepo : '';
+                        this.$wire.selectLables(this.firstSearchTerm);
+                        this.selectedLabels = this.selectedLables ? this.selectedLables : [];
+                    }
                     document.addEventListener('click', (e) => {
                         this.closeDropdownIfClickedOutside(e, this.$refs);
                     });
@@ -274,15 +362,20 @@
                 secondAccountOpenContainer: false,
                 showAccounts: false,
                 firstRepoOpen: false,
+                repoLabelOpen: false,
                 secondRepoOpen: false,
                 selectedFirstAccountId: null,
                 selectedSecondAccountId: null,
                 selectedRepo: null,
                 processingRepos: {},
                 deletingRepos: {},
-                searchTerm: '',
+                firstSearchTerm: '',
+                labelSearchTerm: '',
+                secondSearchTerm: '',
                 filteredFirstAccountRepositories: [],
+                filteredRepositorieLabels: [],
                 filteredSecondAccountRepositories: [],
+                selectedLabels: [],
                 disconnectRepo(repoId) {
                     this.processingRepos[repoId] = true;
                     this.$wire.disconnectRepository(repoId).then(() => {
@@ -298,26 +391,77 @@
                 },
                 async filterFirstAccountRepositories() {
                     if (this.firstAccountRepositories.length) {
-                        this.filteredFirstAccountRepositories = await this.filterRepositories(this.firstAccountRepositories);
+                        this.filteredFirstAccountRepositories = await this.filterFirstRepositories(this.firstAccountRepositories);
+                    }
+                },
+                async filteredRepoLabels() {
+                    console.log(this.selectedLables);
+                    if (this.selectedLables.length) {
+                        this.filteredRepositorieLabels = await this.filterRepositorieLabels(this.selectedLables);
                     }
                 },
                 async filterSecondAccountRepositories() {
                     if (this.secondAccountRepositories.length) {
-                        this.filteredSecondAccountRepositories = await this.filterRepositories(this.secondAccountRepositories);
+                        this.filteredSecondAccountRepositories = await this.filterSecondRepositories(this.secondAccountRepositories);
                         console.log('this', this.filteredSecondAccountRepositories);
                     }
                 },
-                async filterRepositories(accountRepositories) {
-                    return accountRepositories.filter(repo => repo.toLowerCase().includes(this.searchTerm.toLowerCase()));
+                async filterFirstRepositories(accountRepositories) {
+                    return accountRepositories.filter(repo => repo.toLowerCase().includes(this.firstSearchTerm.toLowerCase()));
+                },
+                async filterRepositorieLabels(repositorieLabel) {
+                    return repositorieLabel.filter(label => label.toLowerCase().includes(this.labelSearchTerm.toLowerCase()));
+                },
+                async filterSecondRepositories(accountRepositories) {
+                    return accountRepositories.filter(repo => repo.toLowerCase().includes(this.secondSearchTerm.toLowerCase()));
                 },
                 closeDropdownIfClickedOutside(event, refs) {
                     if (!refs.firstDropdownContainer.contains(event.target)) {
                         this.firstRepoOpen = false;
                     }
+                    // if (!refs.firstLabelDropdownContainer.contains(event.target)) {
+                    //     this.repoLabelOpen = false;
+                    // }
                     if (!refs.secondDropdownContainer.contains(event.target)) {
                         this.secondRepoOpen = false;
                     }
+                },
+                toggleLabelSelection(label) {
+                    if (this.isLabelSelected(label)) {
+                        this.selectedLabels = this.selectedLabels.filter(l => l !== label);
+                    } else {
+                        this.selectedLabels.push(label);
+                    }
+                },
+
+                isLabelSelected(label) {
+                    return this.selectedLabels.includes(label);
+                },
+
+                removeLabel(index) {
+                    this.selectedLabels.splice(index, 1);
+                },
+                accountSync() {
+                    let data = {
+                        account_from: this.selectedFirstAccountId,
+                        account_to: this.selectedSecondAccountId,
+                        repo_from: this.firstSearchTerm,
+                        repo_to: this.secondSearchTerm,
+                        labels: this.selectedLabels
+                    }
+                    this.$wire.syncAccount(data);
                 }
+
+                // async filteredRepoLabels() {
+                //     console.log(this.selectedLabels);
+                //     if (this.selectedLabels.length) {
+                //         this.filteredRepositorieLabels = await this.filterRepositorieLabels(this.selectedLabels);
+                //     }
+                // },
+
+                // async filterRepositorieLabels(repositorieLabel) {
+                //     return repositorieLabel.filter(label => label.toLowerCase().includes(this.labelSearchTerm.toLowerCase()));
+                // },
             }
 
         }
