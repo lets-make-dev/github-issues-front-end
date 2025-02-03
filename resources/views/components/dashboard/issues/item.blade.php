@@ -8,22 +8,29 @@
                 <p class="text-sm text-gray-600 dark:text-gray-300">{{ $repoName }}</p>
             </div>
             <div class="flex items-center space-x-2">
+                @if(!$issue['is_synced'])
+                    <button wire:click="syncIssue({{ $issue['id'] }})" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded text-sm px-2 py-1">Sync Manually</button>
+                @endif
                 <span class="{{ $issue['status'] === 'open' ? 'bg-green-100 text-green-800' : 'bg-gray-300 text-gray-800' }} text-xs font-semibold px-2 py-1 rounded-full border">
                     {{ $issue['status'] }}
                 </span>
-                @foreach($issue['priorities'] as $priority)
+                {{-- @foreach($issue['priorities'] as $priority)
                     <span class="text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 text-blue-800">
                         {{ $priority }}
                     </span>
-                @endforeach
+                @endforeach --}}
             </div>
         </div>
-        <p class="text-gray-700 dark:text-gray-200 mt-2">{!! $issue['description'] !!}</p>
+        <p class="text-gray-700 dark:text-gray-200 mt-2">
+            {!! Str::limit($issue['body'], 150) !!}
+        </p>
         <div class="mt-4 flex items-center justify-between">
             <div class="flex items-center space-x-2">
-                @foreach($issue['labels'] as $color => $label)
-                    <x-dashboard.issues.label :label="$label" :color="$color"/>
-                @endforeach
+                @if ($issue['labels'])
+                    @foreach($issue['labels'] as $label)
+                        <x-dashboard.issues.label :label="$label['name']??''" :color="$label['color']??''"/>
+                    @endforeach
+                @endif
             </div>
             <div class="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-4">
                 <span>Created by: <strong class="text-gray-900 dark:text-white">{{ $issue['creator'] }}</strong></span>
@@ -35,10 +42,10 @@
                                 d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/>
                         </svg>
 
-                        <span wire:click="showComments({{ $issue['issue_number'] }})">{{ $issue['comments_count'] }} comments</span>
+                        <span wire:click="showComments({{ $issue['id']??'' }})">{{ $issue['comments_count']??'' }} comments</span>
 
                     </div>
-                    <button  wire:click="showAddCommentModel({{ $issue['issue_number'] }})" class="rounded">
+                    <button  wire:click="showAddCommentModel({{ $issue['id']??'' }})" class="rounded">
                         <i class="fa-solid fa-plus" title="Add Comment"></i>
                     </button>
                 </div>
@@ -46,7 +53,7 @@
         </div>
 
         <div class="mt-2 flex items-center justify-between">
-            @if($issue['milestone'])
+            @if($issue['milestone']??'')
                 <span class="text-sm text-gray-600 bg-gray-200 px-2 py-1 rounded">🏁 Milestone: {{ $issue['milestone'] }}</span>
             @else
                 <span></span>

@@ -47,11 +47,17 @@ class ProjectSettings extends Component
 
     public array $selectedLables = [];
 
-    public string $firstSelectedRepo = '';
+    public array $firstSelectedRepo = [];
 
-    public string $secondSelectedRepo = '';
+    public array $secondSelectedRepo = [];
 
-    public string $fieldDisabled = '';
+    public bool $isIntegrated = false;
+
+    public array $allLables = [];
+
+    public string $firstSearchTerm = '';
+
+    public string $firstSelectedRepoName = '';
 
     protected $listeners = ['firstAccountSelected', 'secondAccountSelected', 'selectLables', 'syncAccount'];
 
@@ -69,15 +75,15 @@ class ProjectSettings extends Component
         $this->accountsForSecondDropdown = $this->githubAccounts;
         $this->loadConnectedRepositories();
 
-        $integratedAccounts = $this->project->gitHubIntegrations()?->first();
-
-        if ($integratedAccounts) {
-            $this->selectedFirstAccount = $integratedAccounts->account_from;
-            $this->selectedSecondAccount = $integratedAccounts->account_to;
-            $this->firstSelectedRepo = $integratedAccounts->repo_from;
-            $this->secondSelectedRepo = $integratedAccounts->repo_to;
-            $this->selectedLables = json_decode($integratedAccounts->labels);
-            $this->fieldDisabled = 'disabled';
+        // $integratedAccounts = $this->project->gitHubIntegrations()?->first();
+        $integration = GitHubIntegration::with(['repoTo', 'repoFrom'])->where('project_id', $this->project->id)->first();
+        if ($integration) {
+            $this->selectedFirstAccount = $integration->account_from;
+            $this->selectedSecondAccount = $integration->account_to;
+            $this->firstSelectedRepo = $integration->repoFrom()->pluck('name', 'id')->toArray();
+            $this->secondSelectedRepo = $integration->repoTo()->pluck('name', 'id')->toArray();
+            $this->allLables = json_decode($integration->labels);
+            $this->isIntegrated = true;
         }
     }
 
@@ -95,15 +101,15 @@ class ProjectSettings extends Component
         $this->secondAccountRepositories = $this->loadRepositories($this->selectedSecondAccount);
     }
 
-    public function selectLables($repo)
+    public function selectLables(Repository $repo)
     {
-        $labels = json_decode(Repository::where('name', $repo)->value('labels'));
+        $labels = $repo->labels()->pluck('name', 'id')->toArray();
         if(!$labels)
         {
             $this->selectedLables = [];
             return;
         }
-        $this->selectedLables = array_column($labels, 'name');
+        $this->selectedLables = $labels;
     }
 
     public function loadRepositories(string|array $accountId)
@@ -116,7 +122,7 @@ class ProjectSettings extends Component
         }
         return $repositories
             ->whereNotIn('id', array_column($this->connectedRepositories, 'id'))
-            ->pluck('name')->toArray();
+            ->pluck('name', 'id')->toArray();
     }
 
     public function refreshRepos($accountId): void
@@ -277,11 +283,6 @@ class ProjectSettings extends Component
 
     public function syncAccount($data)
     {
-        $data['last_sync_at'] = now();
-        $data['labels'] = json_encode($data['labels']);
-        $data['project_id'] = $this->project?->id;
-
-        // Update or create GitHubIntegration
         $this->project->gitHubIntegrations()->updateOrCreate(
             [
                 'account_from' => $data['account_from'],
@@ -290,12 +291,16 @@ class ProjectSettings extends Component
                 'repo_to' => $data['repo_to'],
             ],
             [
-                'labels' => $data['labels'],
-                'last_sync_at' => $data['last_sync_at'],
+                'labels' => json_encode($data['labels']),
+                'last_sync_at' => now(),
             ]
         );
 
         session()->flash('message', 'Account synced successfully.');
+        if($this->isIntegrated)
+        {
+            return;
+        }
         return redirect()->route('projects.show', $this->project?->id);
     }
 }

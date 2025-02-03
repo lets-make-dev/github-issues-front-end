@@ -32,7 +32,9 @@
                                             commented {{ $comment->created_at->diffForHumans() }}
                                         </div>
                                     @endif
-                                    <div class="md:text-sm p-3">{{ $comment->content }}</div>
+                                    <div class="md:text-sm p-3">
+                                        {!! \Illuminate\Support\Str::markdown($comment->content) !!}
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -37,7 +37,8 @@ class ProjectSelector extends Component
         }
 
         $this->selectedProjectId = $project->id;
-        $this->redirectToProject();
+        // $this->redirectToProject();
+        return redirect()->route('projects.settings', [ 'project' => $project->id]);
     }
 
     public function updatedSelectedProjectId()

@@ -11,11 +11,13 @@
         repositories: @entangle('repositories'),
         connectedRepositories: @entangle('connectedRepositories'),
         selectedLables: @entangle('selectedLables'),
+        allLables: @entangle('allLables'),
         selectedFirstAccount: @entangle('selectedFirstAccount'),
         selectedSecondAccount: @entangle('selectedSecondAccount'),
         firstSelectedRepo: @entangle('firstSelectedRepo'),
         secondSelectedRepo: @entangle('secondSelectedRepo'),
-        fieldDisabled: @entangle('fieldDisabled'),
+        isIntegrated: @entangle('isIntegrated'),
+        firstSelectedRepoName: @entangle('firstSelectedRepoName'),
         changeTab(tab) {
             this.$wire.changeTab(tab);
             const url = new URL(window.location);

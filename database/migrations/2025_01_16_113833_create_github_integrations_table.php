@@ -11,14 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('git_hub_integrations', function (Blueprint $table) {
+        Schema::create('github_integrations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('account_from');
-            $table->foreignId('account_to');
-            $table->string('repo_from');
-            $table->string('repo_to');
+            $table->unsignedBigInteger('account_from');
+            $table->unsignedBigInteger('account_to');
+            $table->unsignedBigInteger('repo_from');
+            $table->unsignedBigInteger('repo_to');
             $table->text('labels');
             $table->dateTime('last_sync_at');
+            $table->unsignedBigInteger('project_id');
             $table->timestamps();
         });
     }
@@ -28,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('git_hub_integrations');
+        Schema::dropIfExists('github_integrations');
     }
 };

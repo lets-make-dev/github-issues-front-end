@@ -1,8 +1,9 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
+use App\Enums\GithubIssueState;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Migrations\Migration;
 
 return new class extends Migration
 {
@@ -14,12 +15,15 @@ return new class extends Migration
         Schema::create('issues', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('github_issue_id')->nullable();
-            $table->foreignId('account_id');
-            $table->string('repository_name');
-            $table->foreignId('project_id');
+            $table->unsignedBigInteger('account_id');
+            $table->unsignedBigInteger('repository_id');
+            $table->unsignedBigInteger('project_id');
             $table->string('title');
             $table->text('body');
             $table->text('labels')->nullable();
+            $table->boolean('is_synced')->default(false);
+            $table->string('creator')->nullable();
+            $table->string('status')->default(GithubIssueState::Open->value);
             $table->timestamps();
         });
     }

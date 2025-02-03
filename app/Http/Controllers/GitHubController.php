@@ -9,6 +9,8 @@ use App\Concerns\GithubApiManager;
 use Illuminate\Support\Facades\Http;
 use App\Actions\GitHub\GetLatestLabels;
 use App\Concerns\ProjectSelectionCacheManager;
+use App\Jobs\StoreRepoLabels;
+use App\Models\Repository;
 
 class GitHubController extends Controller
 {
@@ -23,11 +25,11 @@ class GitHubController extends Controller
 
         $repositories = $this->getRepositories($installationToken);
 
-        if (app()->environment('local')) {
-            $user = User::find(1);
-        } else {
+        // if (app()->environment('local')) {
+        //     $user = User::find(1);
+        // } else {
             $user = auth()->user();
-        }
+        // }
 
         $projectId = $this->getCachedProjectId();
         $this->clearCachedProjectId();
@@ -49,16 +51,28 @@ class GitHubController extends Controller
             $ownerLogin = $repository['owner']['login'];
             $repoName = $repository['name'];
 
+            $repo = Repository::firstOrCreate([
+                'name' => $repoName,
+                'user_id' => $user->id,
+                'account_id' => $account->id,
+                // 'labels' => json_encode($labels)
+            ]);
+
             // fetch labels and store them
 
             $labels = (new GetLatestLabels)->getLabel($installationToken, $ownerLogin, $repoName);
 
-            // find or create the repo
-            $account->repositories()->firstOrCreate([
-                'name' => $repoName,
-                'user_id' => $user->id,
-                'labels' => json_encode($labels)
-            ]);
+            $labels = collect($labels)->map(function ($label) use ($repo) {
+                return [
+                    'label_id' => $label['id'],
+                    'name' => $label['name'],
+                    'color' => $label['color'],
+                    'description' => $label['description'],
+                    'repository_id' => $repo?->id
+                ];
+            })->toArray();
+
+            StoreRepoLabels::dispatch($repo,$labels);
 
         }
 

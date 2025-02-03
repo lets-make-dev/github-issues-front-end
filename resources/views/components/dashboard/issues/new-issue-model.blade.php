@@ -1,6 +1,4 @@
-{{-- @props(['allLabels']) --}}
-
-<div x-data="newIssueModelData()">
+<div x-data="newIssueModelData();">
     <!-- Create new issue Modal -->
     <div x-show="showModalNewIssueModel" x-cloak class="fixed top-0 right-0 bottom-0 left-0 inset-0 bg-gray-800 bg-opacity-75 flex justify-center items-center z-50">
         <div class="bg-white dark:bg-gray-900 dark:text-white p-6 rounded-lg shadow-lg w-full max-w-lg relative">
@@ -8,6 +6,7 @@
                 <h2 class="text-xl font-semibold">Create a New Issue</h2>
                 <button @click="showModalNewIssueModel = false" class="text-gray-700 dark:text-gray-300 text-3xl absolute top-1 right-2">&times;</button>
             </div>
+
             <!-- new issue create Form -->
             <form wire:submit.prevent="createIssue()" class="mt-3">
                 <label for="title" class="block text-gray-700 dark:text-gray-300">Title:</label>
@@ -17,49 +16,8 @@
                 @error('title')
                     <span class="text-red-500 text-sm mt-1 block w-full">{{ $message }}</span>
                 @enderror
-                {{-- <label for="labels" class="block text-gray-700 dark:text-gray-300 mt-4">Labels:</label>
-                <select wire:model.defer="labels" multiple class="w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white mt-2">
-                    <option value="">Select a labels</option>
-                    @foreach ($all_labels as $label)
-                        <option value="{{$label->name??''}}">{{$label->name??''}}</option>
-                    @endforeach
-                </select>
-                @error('labels')
-                    <span class="text-red-500 text-sm mt-1 block w-full">{{ $message }}</span>
-                @enderror --}}
 
-                {{-- <div @click.away="labelDropdown = false">
-                    <div class="flex mt-2 p-2 w-full" >
-                        <input
-                                @input="filteredRepoLabels(); labelDropdown = true"
-                                @focus="labelDropdown = true;"
-                                @click="labelDropdown = true"
-                                type="text"
-                                class="w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white mt-2"
-                                placeholder="Search labels...">
-                    </div>
-
-                    <div x-show="labelDropdown && allLabels != []"
-                         class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
-                        <ul tabindex="-1" role="listbox" aria-labelledby="listbox-label"
-                            aria-activedescendant="listbox-option-3">
-                            <template x-for="label in allLabels" :key="label.name">
-                                <li
-                                    :class="{'bg-gray-100 dark:bg-gray-700': isLabelSelected(label)}"
-                                    class="text-gray-900 dark:text-white cursor-default select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                    role="option">
-                                    <span class="block truncate" x-text="label.name"></span>
-                                </li>
-                            </template>
-                        </ul>
-                    </div>
-                </div> --}}
-
-
-
-                {{-- second attempt --}}
-
-
+                {{-- model form --}}
                 <div class="mb-6 mt-4" @click.away="labelOpen = false">
                     <span class="block text-gray-700 dark:text-gray-300">Add labels:</span>
                     <div class="relative" x-ref="firstLabelDropdownContainer">
@@ -77,8 +35,9 @@
                             </template>
                         </div>
 
-                        <div class="flex">
+                        <div class="flex relative">
                             <input
+                                    x-model="searchTerm"
                                     @input="filteredRepoLabels(); labelOpen = true"
                                     @focus="labelOpen = true"
                                     @click="labelOpen = true"
@@ -86,7 +45,7 @@
                                     class="w-full border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-gray-500 dark:text-white"
                                     placeholder="Search labels...">
                             <button @click="labelOpen = !labelOpen;" type="button"
-                                    class="border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-gray-500">
+                                    class="border-none absolute right-px top-px border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm px-2 py-2 text-sm focus:outline-none focus:ring-0 focus:ring-gray-500 focus:border-gray-500">
                                 <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg"
                                      viewBox="0 0 20 20"
                                      fill="currentColor">
@@ -101,23 +60,23 @@
                              class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
                             <ul tabindex="-1" role="listbox" aria-labelledby="listbox-label"
                                 aria-activedescendant="listbox-option-3">
-                                <template x-for="label in allLabels" :key="label.name">
-                                    <li @click="toggleLabelSelection(label.name)"
-                                        :class="{'bg-gray-100 dark:bg-gray-700': isLabelSelected(label.name)}"
+                                <template x-for="(label, index) in filteredLabels" :key="label">
+                                    <li @click="toggleLabelSelection(label)"
+                                        :class="{'bg-gray-100 dark:bg-gray-700': isLabelSelected(label)}"
                                         class="text-gray-900 dark:text-white cursor-default select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700"
                                         role="option">
-                                        <span class="block truncate" x-text="label.name"></span>
+                                        <span class="block truncate" x-text="label"></span>
                                     </li>
                                 </template>
                                 <li x-show="allLabels.length === 0"
                                     class="text-gray-500 cursor-default select-none relative py-2 pl-3 pr-9">
                                     No matching labels found
                                 </li>
-                                <li wire:click="refreshRepos(selectedFirstAccountId)"
+                                {{-- <li wire:click="refreshRepos(selectedFirstAccountId)"
                                     class="text-gray-900 dark:text-white select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                                     role="option">
                                     <span class="block truncate">Refresh</span>
-                                </li>
+                                </li> --}}
                             </ul>
                         </div>
                     </div>
@@ -134,6 +93,9 @@
 
                 <button @click="saveSelectedLabels()" type="submit"
                     class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition duration-200">
+                    <span wire:loading.class.remove="hidden" class="hidden">
+                        <i class="fas fa-spinner fa-spin mr-2"></i>
+                    </span>
                     Submit New Issue
                 </button>
                 <button @click="showModalNewIssueModel = false" class="mt-4 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
@@ -149,7 +111,12 @@
                 showModalNewIssueModel : false,
                 selectedLabels : [],
                 labelOpen : false,
+                filteredLabels : [],
+                searchTerm : '',
                 init(){
+
+                    this.filteredLabels = this.allLabels ? this.allLabels : [],
+
                     window.addEventListener('open-new-issue-modal', event => {
                             this.showModalNewIssueModel = true ;
                     });
@@ -165,6 +132,8 @@
                      });
                 },
                 toggleLabelSelection(label) {
+                    console.log(label);
+
                     if (this.isLabelSelected(label)) {
                         this.selectedLabels = this.selectedLabels.filter(l => l !== label);
                     } else {
@@ -175,13 +144,29 @@
                 isLabelSelected(label) {
                     return this.selectedLabels.includes(label);
                 },
+
                 removeLabel(index) {
                     this.selectedLabels.splice(index, 1);
                 },
+
                 saveSelectedLabels() {
-                    this.$wire.saveSelectedLabels(this.selectedLabels);
-                    console.log(this.selectedLabels);
-                }
+                    let labels = Object.keys(this.allLabels).filter(key => this.selectedLabels.includes(this.allLabels[key]));
+                    this.$wire.saveSelectedLabels(labels);
+                },
+
+                async filteredRepoLabels() {
+                    if (Object.keys(this.allLabels).length) {
+                        this.filteredLabels = await this.filterLabels(this.allLabels);
+                    }
+                },
+
+                async filterLabels(label) {
+                    return Object.fromEntries(
+                        Object.entries(label).filter(
+                            ([key, value]) => value.toLowerCase().includes(this.searchTerm.toLowerCase())
+                        )
+                    );
+                },
             }
         }
      </script>

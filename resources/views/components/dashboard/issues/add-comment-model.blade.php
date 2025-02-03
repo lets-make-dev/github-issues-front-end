@@ -17,6 +17,9 @@
 
             <button type="submit"
                 class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition duration-200">
+                <span wire:loading.class.remove="hidden" class="hidden">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>
+                </span>
                 Submit Comment
             </button>
             <button @click="showModalAddCommentModel = false" class="mt-4 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">

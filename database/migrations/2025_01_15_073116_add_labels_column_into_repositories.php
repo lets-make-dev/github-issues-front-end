@@ -9,20 +9,20 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
-    {
-        Schema::table('repositories', function (Blueprint $table) {
-            $table->text('labels')->nullable();
-        });
-    }
+    // public function up(): void
+    // {
+    //     Schema::table('repositories', function (Blueprint $table) {
+    //         $table->text('labels')->nullable();
+    //     });
+    // }
 
     /**
      * Reverse the migrations.
      */
-    public function down(): void
-    {
-        Schema::table('repositories', function (Blueprint $table) {
-            $table->dropColumn('labels');
-        });
-    }
+    // public function down(): void
+    // {
+    //     Schema::table('repositories', function (Blueprint $table) {
+    //         $table->dropColumn('labels');
+    //     });
+    // }
 };

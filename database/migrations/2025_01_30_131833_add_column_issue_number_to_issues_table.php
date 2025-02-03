@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('git_hub_integrations', function (Blueprint $table) {
-            $table->foreignId('project_id')->nullable();
+        Schema::table('issues', function (Blueprint $table) {
+            $table->unsignedBigInteger('issue_number')->nullable();
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('git_hub_integrations', function (Blueprint $table) {
-            $table->dropColumn('project_id')->nullable();
+        Schema::table('issues', function (Blueprint $table) {
+            $table->dropColumn('issue_number');
         });
     }
 };
