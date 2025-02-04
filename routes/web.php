@@ -1,6 +1,8 @@
 <?php
 
+use App\Livewire\Dashboard;
 use Illuminate\Support\Facades\Route;
+use Livewire\Livewire;
 
 Route::get('/', function(){
     return redirect()->route('projects.index');
@@ -37,6 +39,8 @@ Route::middleware([
 
     Route::get('/projects/{project}', \App\Livewire\Dashboard::class)
         ->name('projects.show');
+
+    Route::post('/upload-image', [\App\Livewire\Dashboard::class, 'hanlefFileUpload']);
 
     //    Route::get('/dashboard', function () {
     //        return view('dashboard');

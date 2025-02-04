@@ -21,9 +21,9 @@
                 @endforeach --}}
             </div>
         </div>
-        <p class="text-gray-700 dark:text-gray-200 mt-2">
+        {{-- <p class="text-gray-700 dark:text-gray-200 mt-2">
             {!! Str::limit($issue['body'], 150) !!}
-        </p>
+        </p> --}}
         <div class="mt-4 flex items-center justify-between">
             <div class="flex items-center space-x-2">
                 @if ($issue['labels'])

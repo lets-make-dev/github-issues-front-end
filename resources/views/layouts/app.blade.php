@@ -17,6 +17,8 @@
 
         <!-- Styles -->
         @livewireStyles
+        {{-- <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+        <script src="https://unpkg.com/easymde/dist/easymde.min.js" async defer></script> --}}
     </head>
     <body class="font-sans antialiased">
         <x-banner />

@@ -4,7 +4,7 @@
         <div class="bg-white dark:bg-gray-900 dark:text-white p-6 rounded-lg shadow-lg w-full max-w-lg relative">
             <div class="flex justify-between items-center">
                 <h2 class="text-xl font-semibold">Create a New Issue</h2>
-                <button @click="showModalNewIssueModel = false" class="text-gray-700 dark:text-gray-300 text-3xl absolute top-1 right-2">&times;</button>
+                <button @click="closePopUp();" class="text-gray-700 dark:text-gray-300 text-3xl absolute top-1 right-2">&times;</button>
             </div>
 
             <!-- new issue create Form -->
@@ -81,12 +81,12 @@
                         </div>
                     </div>
                 </div>
-
-
                 <label for="description" class="block text-gray-700 dark:text-gray-300 mt-4">Description:</label>
-                <textarea wire:model.defer="description" id="description" rows="3"
-                    class="w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white mt-2"
-                    placeholder="Enter a description for your issue"></textarea>
+                <div wire:ignore>
+                    <textarea wire:model.defer="description" id="description" rows="3"
+                        class="w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white mt-2"
+                        placeholder="Enter a description for your issue"></textarea>
+                </div>
                 @error('description')
                     <span class="text-red-500 text-sm mt-1 block w-full">{{ $message }}</span>
                 @enderror
@@ -98,7 +98,7 @@
                     </span>
                     Submit New Issue
                 </button>
-                <button @click="showModalNewIssueModel = false" class="mt-4 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                <button type="button" @click="closePopUp();" class="mt-4 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
                     Close
                 </button>
             </form>
@@ -113,12 +113,15 @@
                 labelOpen : false,
                 filteredLabels : [],
                 searchTerm : '',
+                easyMDE : null,
+                element : null,
                 init(){
-
+                    this.element = document.getElementById('description') ? document.getElementById('description') : null;
                     this.filteredLabels = this.allLabels ? this.allLabels : [],
 
                     window.addEventListener('open-new-issue-modal', event => {
                             this.showModalNewIssueModel = true ;
+                            this.initEasyMDE();
                     });
                      window.addEventListener('issueCreatedSucessfully', event => {
                         this.showModalNewIssueModel = false ;
@@ -126,11 +129,23 @@
                          const messageElement = document.getElementById('successMessage');
                          messageElement.style.display = 'block';
                          messageElement.innerHTML  = event.detail;
+                         this.closePopUp()
                          setTimeout(() => {
                              messageElement.style.display = 'none';
-                         }, 3000);
+                         }, 2000);
                      });
                 },
+
+                initEasyMDE() {
+                    setTimeout(() => {
+                        this.easyMDE = new EasyMDE({
+                            element: this.element,
+                            maxHeight: '40vh',
+                        });
+                        console.log('easyMDE',easyMDE);
+                    }, 200);
+                },
+
                 toggleLabelSelection(label) {
                     console.log(label);
 
@@ -150,8 +165,17 @@
                 },
 
                 saveSelectedLabels() {
+                    console.log(document.querySelector('#title').value);
+
+                    if(document.querySelector('#title').value == '')
+                    {
+                        console.log('we found the error');
+
+                        return;
+                    }
                     let labels = Object.keys(this.allLabels).filter(key => this.selectedLabels.includes(this.allLabels[key]));
-                    this.$wire.saveSelectedLabels(labels);
+                    let descriptionValue = this.easyMDE.value();
+                    this.$wire.setvalues(labels, descriptionValue);
                 },
 
                 async filteredRepoLabels() {
@@ -166,6 +190,16 @@
                             ([key, value]) => value.toLowerCase().includes(this.searchTerm.toLowerCase())
                         )
                     );
+                },
+                closePopUp() {
+                    if (this.easyMDE) {
+                        this.easyMDE.toTextArea();
+                        this.easyMDE = null;
+                    }
+                    if (this.element) {
+                        this.element.value = '';
+                    }
+                    this.showModalNewIssueModel = false;
                 },
             }
         }

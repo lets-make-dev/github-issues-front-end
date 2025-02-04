@@ -11,6 +11,8 @@ use Livewire\Component;
 use App\Models\Repository;
 use Illuminate\Support\Js;
 use App\Models\IssueSynced;
+use Illuminate\Http\Request;
+use Livewire\WithFileUploads;
 use GuzzleHttp\Promise\Create;
 use App\Enums\GithubIssueState;
 use App\Models\GitHubIntegration;
@@ -18,6 +20,7 @@ use App\Concerns\GithubApiManager;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use App\Actions\GitHub\CreateGithubIssue;
 use App\Actions\GitHub\CreateGithubComment;
 use Illuminate\Http\Client\RequestException;
@@ -25,6 +28,7 @@ use Illuminate\Http\Client\RequestException;
 class Dashboard extends Component
 {
     use GithubApiManager;
+    use WithFileUploads;
 
     public Project $project;
 
@@ -76,7 +80,7 @@ class Dashboard extends Component
 
     public Account $toAccount;
 
-    public function mount(Project $project): void
+    public function mount(Project $project)
     {
         $this->project = $project;
         // if(!empty(request()->query('selectedAccount')))
@@ -105,6 +109,7 @@ class Dashboard extends Component
         } else {
             $this->integratedAccounts = [];
             $this->accounts = [];
+            return abort(404);
         }
 
         // fetch repos
@@ -283,6 +288,12 @@ class Dashboard extends Component
 
     }
 
+    public function setComment($comment)
+    {
+        $this->newComment = $comment;
+        // dd($this->newComment)
+    }
+
     public function addComment()
     {
         $syncedIssue = $this->selectedIssue?->syncedIssues()?->first();
@@ -410,7 +421,6 @@ class Dashboard extends Component
         $this->validate([
             'title' => 'required|max:255'
         ]);
-
         try {
             return DB::transaction(function () {
                 $accountFrom = $this->getAndRefreshAccount();
@@ -544,9 +554,10 @@ class Dashboard extends Component
     }
 
 
-    public function saveSelectedLabels($labels)
+    public function setvalues($labels, $description)
     {
         $this->labels = $labels;
+        $this->description = $description;
     }
 
     public function getLabelsValue(array $labels): array
@@ -564,6 +575,16 @@ class Dashboard extends Component
         $this->handleSyncedIssue($this->getAndRefreshAccount(), $issue, true);
         $this->dispatch('issueCreatedSucessfully', 'Issue successfully synced on GitHub.');
         $this->getIssues();
+    }
+
+    public function hanlefFileUpload(Request $request)
+    {
+        $validatedData = $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+        $imagePath = $validatedData['image']->store('attachments', 's3', 'public');
+        $publicUrl = Storage::disk('s3')->url($imagePath);
+        return response()->json(['url' => $publicUrl, 'name' => $validatedData['image']->getClientOriginalName()]);
     }
 }
 // Check if the response is successful
