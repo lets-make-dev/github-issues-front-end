@@ -138,12 +138,15 @@
 
                 initEasyMDE() {
                     setTimeout(() => {
-                        this.easyMDE = new EasyMDE({
-                            element: this.element,
-                            maxHeight: '40vh',
-                        });
-                        console.log('easyMDE',easyMDE);
-                    }, 200);
+                    this.easyMDE = new EasyMDE({
+                        maxHeight: '40vh',
+                        element: this.element,
+                        uploadImage: true,
+                        imageUploadFunction: this.uploadImage.bind(this),
+                        imageMaxSize: 2 * 1024 * 1024,
+                        imageAccept: 'image/*',
+                    });
+                }, 200);
                 },
 
                 toggleLabelSelection(label) {
@@ -201,6 +204,34 @@
                     }
                     this.showModalNewIssueModel = false;
                 },
+
+                uploadImage(file) {
+                let formData = new FormData();
+                formData.append('image', file);
+
+                console.log(formData);
+                axios.post('/upload-image', formData, {
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'multipart/form-data',
+                    }
+                })
+                .then(response => {
+                    const cm = this.easyMDE.codemirror;
+                    const cursorPosition = cm.getCursor();
+                    const imageMarkdown = `![${response.data.name}](${response.data.url})`;
+                    cm.replaceRange(imageMarkdown, cursorPosition);
+                    const newCursorPosition = {
+                        line: cursorPosition.line + 1,
+                        ch: 0
+                    };
+                    cm.setCursor(newCursorPosition);
+                })
+                .catch(error => {
+                    console.log(error);
+                });
+
+            }
             }
         }
      </script>
