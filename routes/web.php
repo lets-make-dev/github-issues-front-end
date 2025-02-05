@@ -13,6 +13,8 @@ Route::get('/main', \App\Livewire\Dashboard::class)->name('main');
 
 Route::get('/auth/github/callback', [\App\Http\Controllers\GitHubController::class, 'handleGitHubCallback']);
 
+Route::post('/webhook', [\App\Livewire\Dashboard::class, 'handleWebhook']);
+
 //Route::get('/github/connect', function () {
 //    return redirect()->to('https://github.com/apps/hubbub-the-missing-front-end/installations/new');
 //})->name('github.connect');

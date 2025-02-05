@@ -36,7 +36,7 @@ class Dashboard extends Component
 
     public Repository $repos;
 
-    public array|Collection $issues = [];
+    public $issues;
 
     public array|Collection $issuesFiltered = [];
 
@@ -130,9 +130,13 @@ class Dashboard extends Component
                 'account_id' => $this->fromAccount->id
             ])
             ->withCount('comments')
-            ->orderBy('created_at', 'DESC')
-            ->get()
-            ->toArray();
+            ->orderBy('created_at', 'DESC');
+        if($this->showClosed)
+        {
+            $this->issues = $this->issues->where('status', GithubIssueState::Closed->value);
+        }
+
+        $this->issues = $this->issues->get()->toArray();
     }
 
     // Reusable query method
@@ -586,6 +590,21 @@ class Dashboard extends Component
         $publicUrl = Storage::disk('s3')->url($imagePath);
         return response()->json(['url' => $publicUrl, 'name' => $validatedData['image']->getClientOriginalName()]);
     }
+
+    public function handleWebhook(Request $request)
+    {
+        $eventType = $request->header('X-GitHub-Event');
+        if($eventType === 'issues')
+        {
+            $payload = $request->all();
+            $issue = issue::where('github_issue_id', $payload['issue']['id'])->first();
+            if($issue)
+            {
+                $issue->update(['status' => $payload['issue']['state']]);
+            }
+        }
+    }
+
 }
 // Check if the response is successful
 // Return the JSON response from the API
