@@ -1,15 +1,39 @@
 @section('title', 'Dashboard - ' . config('app.name', 'Laravel'))
 
 <div>
+    <div wire:loading>
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div class="flex space-x-3">
+                <div class="w-4 h-4 bg-white rounded-full animate-[dot-bounce_0.5s_ease-in-out_infinite]"></div>
+                <div class="w-4 h-4 bg-white rounded-full animate-[dot-bounce_0.5s_ease-in-out_0.1s_infinite]"></div>
+                <div class="w-4 h-4 bg-white rounded-full animate-[dot-bounce_0.5s_ease-in-out_0.2s_infinite]"></div>
+            </div>
+        </div>
+    </div>
     <div class="flex flex-col md:flex-row justify-between items-center mb-6">
-        <div class="flex items-center space-x-4 mb-4 md:mb-0">
-            <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">Repository:</h2>
-            <select wire:model.live="selectedRepo" class="border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-black dark:text-white
-                ">
-                @foreach($repos as $repo)
-                    <option value="{{ $repo }}">{{ $repo }}</option>
-                @endforeach
-            </select>
+        <div>
+            <div class="flex items-center space-x-4 mb-4 md:mb-0">
+                <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">Account:</h2>
+                <select wire:model.live="selectedAccount" class="border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-black dark:text-white
+                    ">
+                    <option value="{{$accounts->id}}">{{$accounts->name}}</option>
+                    {{-- <option value="null">Chosse a Account</option> --}}
+                    {{-- @foreach($accounts as $key => $account)
+                        <option value="{{ $key }}">{{ $account }}</option>
+                    @endforeach --}}
+                </select>
+            </div>
+            <div class="flex items-center space-x-4 mb-4 mt-4 md:mb-0">
+                <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">Repository:</h2>
+                <select wire:model.live="selectedRepo" class="border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-black dark:text-white
+                    ">
+                    <option value="{{$repos->id}}">{{$repos->name}}</option>
+                    {{-- <option value="null">Chosse a Repository</option> --}}
+                    {{-- @foreach($repos as $repo)
+                        <option value="{{ $repo }}">{{ $repo }}</option>
+                    @endforeach --}}
+                </select>
+            </div>
         </div>
         <div class="flex items-center w-full md:w-auto">
             <input wire:model.live.debounce.300ms="search" type="text" placeholder="Search issues..."
@@ -40,8 +64,13 @@
         </div>
     </div>
 
-    <div class="space-y-8">
-
+    <div class="space-y-8" x-data="{ allLabels: @entangle('allLabels'), showCreateButton: @entangle('showCreateButton') }">
+            <button
+                x-show="$wire.showCreateButton"
+                wire:click='showNewIssueModel()'
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+                New Issue
+            </button>
 
         @foreach($this->groupedIssues as $group)
             <div class="mb-8">
@@ -51,6 +80,7 @@
         @endforeach
         <x-dashboard.issues.comment-list-model :comments="$comments"/>
         <x-dashboard.issues.add-comment-model/>
+        <x-dashboard.issues.new-issue-model />
 
 
     </div>

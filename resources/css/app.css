@@ -5,7 +5,9 @@
 [x-cloak] {
     display: none;
 }
-
+.min-h-inherit {
+    min-height: inherit;
+}
 a.inline-flex.items-center.px-1.pt-1.border-b-2.border-transparent.text-sm.font-medium.leading-5.text-gray-500.dark\:text-gray-400.hover\:text-gray-700.dark\:hover\:text-gray-300.hover\:border-gray-300.dark\:hover\:border-gray-700.focus\:outline-none.focus\:text-gray-700.dark\:focus\:text-gray-300.focus\:border-gray-300.dark\:focus\:border-gray-700.transition.duration-150.ease-in-out.text-xl.text-white.hover\:text-gray-300.font-bold:hover,
 a.inline-flex.items-center.px-1.pt-1.border-b-2.border-transparent.text-sm.font-medium.leading-5.text-gray-500.dark\:text-gray-400.hover\:text-gray-700.dark\:hover\:text-gray-300.hover\:border-gray-300.dark\:hover\:border-gray-700.focus\:outline-none.focus\:text-gray-700.dark\:focus\:text-gray-300.focus\:border-gray-300.dark\:focus\:border-gray-700.transition.duration-150.ease-in-out.text-xl.text-white.hover\:text-gray-300.font-bold:focus {
     @apply text-gray-300
@@ -38,5 +40,48 @@ a.inline-flex.items-center.px-1.pt-1.border-b-2.border-transparent.text-sm.font-
     }
     50% {
         transform: translateY(-20px);
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    /* EasyMDE Dark Theme */
+    .CodeMirror,
+    .editor-toolbar,
+    .editor-toolbar button,
+    .editor-statusbar {
+        background-color: #1f2937 !important;
+        color: #d4d4d4 !important;
+        border-color: #4b5563 !important;
+    }
+
+    /* Toolbar button hover */
+    .editor-toolbar button:hover {
+        background-color: #333 !important;
+    }
+
+    /* Toolbar active buttons */
+    .editor-toolbar button.active {
+        background-color: #1f2937 !important;
+    }
+
+    /* Editor cursor color */
+    .CodeMirror-cursor {
+        border-left: 1px solid #d4d4d4 !important;
+    }
+
+    /* Placeholder text color */
+    .CodeMirror-placeholder {
+        color: #7a7a7a !important;
+    }
+
+    /* Preview pane dark background */
+    .editor-preview,
+    .editor-preview-side {
+        background-color: #1f2937 !important;
+        color: #d4d4d4 !important;
+        border-left: 1px solid #4b5563 !important;
+    }
+    span.CodeMirror-selectedtext,.CodeMirror-selected {
+        background: #111827 !important;
     }
 }

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Comment extends Model
 {
-    protected $fillable = ['content', 'project_id', 'repository_id', 'issue_number', 'github_comment_id'];
+    protected $fillable = ['content', 'project_id', 'repository_id', 'issue_number', 'github_comment_id', 'issue_id'];
 
     public function project()
     {
@@ -19,10 +19,15 @@ class Comment extends Model
         return $this->belongsTo(Repository::class);
     }
 
-    public function scopeByIssueAndProject(Builder $query, $issueNumber, $projectId, $repositoryId)
+    public function issue()
     {
-        return $query->where('issue_number', $issueNumber)
-            ->where('project_id', $projectId)
-            ->where('repository_id', $repositoryId);
+        return $this->belongsTo(Issue::class);
     }
+
+    // public function scopeByIssueAndProject(Builder $query, $issueNumber, $projectId, $repositoryId)
+    // {
+    //     return $query->where('issue_number', $issueNumber)
+    //         ->where('project_id', $projectId)
+    //         ->where('repository_id', $repositoryId);
+    // }
 }

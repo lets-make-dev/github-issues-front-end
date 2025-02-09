@@ -5,7 +5,7 @@
             <div class="flex">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
-                    <a href="{{ route('dashboard') }}">
+                    <a href="{{ route('projects.index') }}">
                         <x-application-mark class="block h-9 w-auto"/>
                     </a>
                 </div>
@@ -13,6 +13,10 @@
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
 
+                    <x-nav-link href="{{ route('projects.index') }}" :active="request()->routeIs('projects.index')"
+                                class="text-xl text-black dark:text-white dark:hover:text-gray-300 font-bold">
+                        {{ __('Projects') }}
+                    </x-nav-link>
                     {{--                    @if (!request('project'))--}}
                     @if (request('project'))
                         <x-nav-link href="{{ route('projects.show', [ 'project' => request('project', 1)]) }}"
@@ -21,10 +25,6 @@
                             {{ __('Dashboard') }}
                         </x-nav-link>
                     @endif
-                    <x-nav-link href="{{ route('projects.index') }}" :active="request()->routeIs('projects.index')"
-                                class="text-xl text-black dark:text-white dark:hover:text-gray-300 font-bold">
-                        {{ __('Projects') }}
-                    </x-nav-link>
                     @if (request('project'))
                         <x-nav-link href="{{ route('projects.settings', [ 'project' => request('project', 1)]) }}"
                                     :active="request()->routeIs('projects.settings')"

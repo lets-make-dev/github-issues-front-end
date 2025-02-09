@@ -37,7 +37,8 @@ class ProjectSelector extends Component
         }
 
         $this->selectedProjectId = $project->id;
-        $this->redirectToProject();
+        // $this->redirectToProject();
+        return redirect()->route('projects.settings', [ 'project' => $project->id]);
     }
 
     public function updatedSelectedProjectId()
@@ -54,8 +55,13 @@ class ProjectSelector extends Component
 
     public function selectProject($projectId)
     {
-        $this->selectedProjectId = $projectId;
-        $this->redirectToProject();
+        if(Project::find($projectId)->gitHubIntegrations()->first())
+        {
+            $this->selectedProjectId = $projectId;
+            $this->redirectToProject();
+            return;
+        }
+        return redirect()->route('projects.settings', [ 'project' => $projectId]);
     }
 
     public function sortBy($field)

@@ -7,6 +7,7 @@ use App\Concerns\ProjectSelectionCacheManager;
 use App\Models\Account;
 use App\Models\Project;
 use App\Models\Repository;
+use App\Models\GitHubIntegration;
 use Illuminate\Support\Facades\Http;
 use Livewire\Component;
 
@@ -44,7 +45,21 @@ class ProjectSettings extends Component
 
     public array $secondAccountRepositories = [];
 
-    protected $listeners = ['firstAccountSelected', 'secondAccountSelected'];
+    public array $selectedLables = [];
+
+    public array $firstSelectedRepo = [];
+
+    public array $secondSelectedRepo = [];
+
+    public bool $isIntegrated = false;
+
+    public array $allLables = [];
+
+    public string $firstSearchTerm = '';
+
+    public string $firstSelectedRepoName = '';
+
+    protected $listeners = ['firstAccountSelected', 'secondAccountSelected', 'selectLables', 'syncAccount'];
 
     public function mount(Project $project, $tab = 'general'): void
     {
@@ -54,11 +69,22 @@ class ProjectSettings extends Component
         $this->projectVisibility = $project->visibility;
         $tab = 'github';
         $this->activeTab = in_array($tab, ['general', 'github', 'users']) ? $tab : 'general';
-
-        $this->githubAccounts = $project->accounts->pluck('name', 'id')->toArray();
+        // $this->githubAccounts = $project->accounts->pluck('name', 'id')->toArray();
+        $this->githubAccounts = auth()->user()->accounts->pluck('name', 'id')->toArray();
         $this->accountsForFirstDropdown = $this->githubAccounts;
         $this->accountsForSecondDropdown = $this->githubAccounts;
         $this->loadConnectedRepositories();
+
+        // $integratedAccounts = $this->project->gitHubIntegrations()?->first();
+        $integration = GitHubIntegration::with(['repoTo', 'repoFrom'])->where('project_id', $this->project->id)->first();
+        if ($integration) {
+            $this->selectedFirstAccount = $integration->account_from;
+            $this->selectedSecondAccount = $integration->account_to;
+            $this->firstSelectedRepo = $integration->repoFrom()->pluck('name', 'id')->toArray();
+            $this->secondSelectedRepo = $integration->repoTo()->pluck('name', 'id')->toArray();
+            $this->allLables = json_decode($integration->labels);
+            $this->isIntegrated = true;
+        }
     }
 
     public function firstAccountSelected($accountId): void
@@ -75,6 +101,17 @@ class ProjectSettings extends Component
         $this->secondAccountRepositories = $this->loadRepositories($this->selectedSecondAccount);
     }
 
+    public function selectLables(Repository $repo)
+    {
+        $labels = $repo->labels()->pluck('name', 'id')->toArray();
+        if(!$labels)
+        {
+            $this->selectedLables = [];
+            return;
+        }
+        $this->selectedLables = $labels;
+    }
+
     public function loadRepositories(string|array $accountId)
     {
         $repositories = Repository::query();
@@ -85,7 +122,7 @@ class ProjectSettings extends Component
         }
         return $repositories
             ->whereNotIn('id', array_column($this->connectedRepositories, 'id'))
-            ->pluck('name')->toArray();
+            ->pluck('name', 'id')->toArray();
     }
 
     public function refreshRepos($accountId): void
@@ -242,5 +279,28 @@ class ProjectSettings extends Component
         $this->cacheProjectId($project->id);
 
         return redirect()->away('https://github.com/apps/hubbub-the-missing-front-end/installations/new');
+    }
+
+    public function syncAccount($data)
+    {
+        $this->project->gitHubIntegrations()->updateOrCreate(
+            [
+                'account_from' => $data['account_from'],
+                'account_to' => $data['account_to'],
+                'repo_from' => $data['repo_from'],
+                'repo_to' => $data['repo_to'],
+            ],
+            [
+                'labels' => json_encode($data['labels']),
+                'last_sync_at' => now(),
+            ]
+        );
+
+        session()->flash('message', 'Account synced successfully.');
+        if($this->isIntegrated)
+        {
+            return;
+        }
+        return redirect()->route('projects.show', $this->project?->id);
     }
 }

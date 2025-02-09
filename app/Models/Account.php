@@ -19,4 +19,16 @@ class Account extends Model
     {
         return $this->hasMany(Repository::class);
     }
+
+    public function syncedAccounts()
+    {
+        return $this->hasManyThrough(
+            Account::class,
+            GitHubIntegration::class,
+            'account_from',
+            'id',
+            'id',
+            'account_to'
+        );
+    }
 }

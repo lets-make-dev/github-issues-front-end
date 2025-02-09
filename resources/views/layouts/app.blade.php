@@ -17,6 +17,8 @@
 
         <!-- Styles -->
         @livewireStyles
+        {{-- <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+        <script src="https://unpkg.com/easymde/dist/easymde.min.js" async defer></script> --}}
     </head>
     <body class="font-sans antialiased">
         <x-banner />
@@ -45,7 +47,7 @@
 
 
             <!-- Page Content -->
-            <main class="max-w-[80%] mx-auto mt-8 px-4 sm:px-6 lg:px-8 overflow-auto">
+            <main class="max-w-[80%] mx-auto mt-8 px-4 sm:px-6 lg:px-8 overflow-auto min-h-inherit">
 
                 <h1 class="text-3xl pb-4">@yield('projectName')</h1>
 

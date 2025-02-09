@@ -25,4 +25,9 @@ class Project extends Model
     {
         return $this->belongsToMany(Repository::class);
     }
+
+    public function gitHubIntegrations()
+    {
+        return $this->hasMany(GitHubIntegration::class, 'project_id', 'id');
+    }
 }

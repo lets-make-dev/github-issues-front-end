@@ -2,27 +2,41 @@
 
 namespace App\Livewire;
 
-use App\Concerns\GithubApiManager;
-use App\Enums\GithubIssueState;
+use Exception;
+use App\Models\Issue;
+use App\Models\Account;
 use App\Models\Comment;
 use App\Models\Project;
-use Exception;
-use Illuminate\Http\Client\RequestException;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Http;
 use Livewire\Component;
+use App\Models\Repository;
+use Illuminate\Support\Js;
+use App\Models\IssueSynced;
+use Illuminate\Http\Request;
+use Livewire\WithFileUploads;
+use GuzzleHttp\Promise\Create;
+use App\Enums\GithubIssueState;
+use App\Models\GitHubIntegration;
+use App\Concerns\GithubApiManager;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+use App\Actions\GitHub\CreateGithubIssue;
+use App\Actions\GitHub\CreateGithubComment;
+use Illuminate\Http\Client\RequestException;
 
 class Dashboard extends Component
 {
     use GithubApiManager;
+    use WithFileUploads;
 
     public Project $project;
 
     public string $selectedRepo = '';
 
-    public array $repos = [];
+    public Repository $repos;
 
-    public array|Collection $issues = [];
+    public $issues;
 
     public array|Collection $issuesFiltered = [];
 
@@ -36,30 +50,158 @@ class Dashboard extends Component
 
     public string $newComment = '';
 
-    protected array $queryString = ['selectedRepo', 'showClosed', 'groupBy', 'search'];
+    protected array $queryString = ['selectedAccount', 'selectedRepo', 'showClosed', 'groupBy', 'search'];
 
     public $comments = [];
 
-    public $selectedIssueNumber = '';
+    public Issue $selectedIssue;
 
-    public function mount(Project $project): void
+    public $accounts = [];
+
+    public $selectedAccount = '';
+
+    public $showCreateButton = false;
+
+    public $title = '';
+
+    public $description = '';
+
+    public $allLabels = [];
+
+    public $labels = [];
+
+    public $primeryAccountId = '';
+
+    public $integratedAccounts = [];
+
+    public $primeryAccount = false;
+
+    public Account $fromAccount;
+
+    public Account $toAccount;
+
+    public function mount(Project $project)
     {
         $this->project = $project;
-        $this->repos = $this->project->repositories()->pluck('name')->toArray();
-        if (! empty($this->repos)) {
-            $this->selectedRepo = $this->selectedRepo ?: $this->repos[0];
-            $this->fetchIssues();
+        // if(!empty(request()->query('selectedAccount')))
+        // {
+        //     $this->selectedAccount = request()->query('selectedAccount', '');
+        //     $this->updatedSelectedAccount();
+        // }
+
+        // if(!empty(request()->query('selectedRepo')))
+        // {
+        //     $this->selectedRepo = request()->query('selectedRepo', '');
+        //     $this->updatedSelectedRepo();
+        // }
+        // Fetch integrated accounts safely
+        $integration = GitHubIntegration::with(['repoFrom', 'repoTo'])->where('project_id', $this->project->id)->first();
+
+        if ($integration) {
+            // $this->integratedAccounts = $integration->toArray();
+            $this->fromAccount = $integration->accountFrom;
+            $this->toAccount = $integration->accountTo;
+            $this->repos = $integration->repoFrom;
+            $this->allLabels = $integration->repoFrom->labels()->pluck('name', 'id')->toArray();
+            // Fetch accounts using a reusable query method
+            // $this->accounts = $this->getAccountQuery()->pluck('name', 'id');
+            $this->accounts = $this->fromAccount;
+        } else {
+            $this->integratedAccounts = [];
+            $this->accounts = [];
+            return abort(404);
+        }
+
+        // fetch repos
+        if ($this->repos) {
+            $this->showCreateButton = true;
+            $this->selectedRepo = $this->repos->name;
+            // $this->fetchIssues();
+            $this->getIssues();
         }
     }
 
-    public function updatedSelectedRepo(): void
+    public function getIssues()
     {
-        $this->fetchIssues();
+        $this->issues = Issue::select('id','title', 'body', 'labels', 'creator', 'status', 'is_synced', 'issue_number')
+            ->where([
+                'project_id' => $this->project->id,
+                'repository_id' => $this->repos->id,
+                'account_id' => $this->fromAccount->id
+            ])
+            ->withCount('comments')
+            ->orderBy('created_at', 'DESC');
+        if($this->showClosed)
+        {
+            $this->issues = $this->issues->where('status', GithubIssueState::Closed->value);
+        }
+
+        $this->issues = $this->issues->get()->toArray();
     }
+
+    // Reusable query method
+    public function getAccountQuery()
+    {
+        return Account::whereIn('id', $this->integratedAccounts);
+    }
+
+    public function gitHubIntegrationAccount()
+    {
+        return $this->project->gitHubIntegrations()->first();
+    }
+
+
+    public function updatedSelectedAccount(): void
+    {
+        if($this->selectedAccount == "null")
+        {
+            $this->repos = [];
+            $this->showCreateButton = false;
+            return;
+        }
+
+        // dd($this->project->gitHubIntegrations()->first());
+        // $this->repos = Repository::where('account_id', $this->selectedAccount)->pluck('name')->toArray();
+        $this->showCreateButton = true;
+
+        $this->repos = GitHubIntegration::query()
+        ->where(function ($query) {
+            $query->where('account_from', $this->selectedAccount)
+                  ->orWhere('account_to', $this->selectedAccount);
+        })
+        ->get()
+        ->map(function ($integration) {
+            $this->primeryAccount = $integration->account_from == $this->selectedAccount;
+            return $integration->account_from == $this->selectedAccount
+                ? $integration->repo_from
+                : $integration->repo_to;
+        })
+        ->toArray();
+
+        $this->selectedRepo = '';
+        $this->issues = [];
+        $this->showCreateButton = false;
+    }
+
+    // public function updatedSelectedRepo(): void
+    // {
+    //     if($this->selectedRepo != "null")
+    //     {
+    //         if($this->primeryAccount)
+    //         {
+    //             $this->showCreateButton = true;
+    //         }
+    //         $this->fetchIssues();
+    //         $this->allLabels = json_decode(Repository::where(['account_id' => $this->selectedAccount],['name' => $this->selectedRepo])->value('labels'));
+    //         return;
+    //     }
+    //         $this->showCreateButton = false;
+    // }
 
     public function updatedShowClosed(): void
     {
-        $this->fetchIssues();
+        // $this->fetchIssues();
+        $this->getIssues();
     }
 
     public function updatedSearch(): void
@@ -80,8 +222,7 @@ class Dashboard extends Component
         if (empty($this->selectedRepo)) {
             return;
         }
-
-        $account = $this->project->accounts()->whereRelation('repositories', 'name', $this->selectedRepo)->first();
+        $account = $this->getAccountQuery()->whereRelation('repositories', 'name', $this->selectedRepo)->first();
 
         if (! $account) {
             $this->issues = [];
@@ -110,12 +251,12 @@ class Dashboard extends Component
                     return empty($this->search) || stripos($issue['title'], $this->search) !== false;
                 })
                 ->map(function ($issue) {
-                    $repositoryId = $this->project->repositories()->where('name', $this->selectedRepo)->first()->id;
+                    $repositoryId = $this->project->repositories()->where('name', $this->selectedRepo)->first()?->id;
                     $commentsCount = Comment::byIssueAndProject($issue['number'], $this->project->id, $repositoryId)->count();
 
                     return [
                         'title' => $issue['title'],
-                        'description' => str()->markdown($issue['body']),
+                        'description' => $issue['body'] ? str()->markdown($issue['body']) : '',
                         'status' => $issue['state'],
                         'creator' => $issue['user']['login'],
                         'comments' => $issue['comments'],
@@ -151,10 +292,15 @@ class Dashboard extends Component
 
     }
 
+    public function setComment($comment)
+    {
+        $this->newComment = $comment;
+        // dd($this->newComment)
+    }
+
     public function addComment()
     {
-        // $this->emit('commentAddedSucessfully', $issueNumber);
-        $issueNumber = $this->selectedIssueNumber;
+        $syncedIssue = $this->selectedIssue?->syncedIssues()?->first();
 
         $this->validate([
             'newComment' => 'required',
@@ -162,26 +308,31 @@ class Dashboard extends Component
 
         try {
 
-            $response = $this->addCommentToIssue(
-                $issueNumber,
-                $this->newComment,
+            $accountFrom = $this->getAndRefreshAccount();
+
+            $response = $this->createGithubComment(
+                account: $accountFrom,
+                repo: $this->selectedRepo,
+                issueNumber: $this->selectedIssue->issue_number
             );
-            if ($response->status() !== 201) {
+
+            if (!$response) {
                 return $this->addError('newComment', 'Failed to add comment to GitHub.');
             }
 
-            Comment::create([
-                'content' => $this->newComment,
-                'project_id' => $this->project->id,
-                'repository_id' => $this->project->repositories()->where('name', $this->selectedRepo)->first()->id,
-                'issue_number' => $issueNumber,
-                'github_comment_id' => $response['id'],
-            ]);
+            $this->createLocalComment($this->selectedIssue, $response);
+
+            $syncedIssue = $this->selectedIssue?->syncedIssues()?->first();
+            if($this->selectedIssue->is_synced && $syncedIssue)
+            {
+                $this->handleSyncedComment($syncedIssue);
+            }
 
             $this->dispatch('commentAddedSucessfully', 'Comment successfully added to GitHub.');
 
             $this->newComment = '';
-            $this->fetchIssues();
+            // $this->fetchIssues();
+            $this->getIssues();
 
         } catch (Exception $e) {
             session()->flash('error', 'Could not add comment. Please try again later.');
@@ -193,38 +344,267 @@ class Dashboard extends Component
 
     }
 
-    private function addCommentToIssue($issueNumber, $comment)
+    public function handleSyncedComment(Issue $syncedIssue)
     {
-        $account = $this->project->accounts()->whereRelation('repositories', 'name', $this->selectedRepo)->first();
+            $this->refreshGitHubToken($this->toAccount);
+            $response = $this->createGithubComment(
+                account: $this->toAccount,
+                repo: $syncedIssue->repository->name,
+                issueNumber: $syncedIssue->issue_number
+            );
 
-        $response = Http::withToken($account->github_token)
-            ->withHeaders(['Accept' => 'application/vnd.github.v3+json'])
-            ->post("https://api.github.com/repos/{$account->name}/{$this->selectedRepo}/issues/{$issueNumber}/comments", [
-                'body' => $comment,
-            ]);
-
-        return $response;
-
+            if (!$response) {
+                return $this->addError('newComment', 'Failed to add comment to synced GitHub repository.');
+            }
+            $this->createLocalComment($syncedIssue, $response);
     }
 
-    public function showComments($issueNumber)
+    public function createLocalComment(Issue $issue, $response)
     {
-        $this->comments = Comment::byIssueAndProject($issueNumber, $this->project->id, $this->project->repositories()
-            ->where('name', $this->selectedRepo)->first()?->id)
-            ->get();
+        Comment::create([
+            'content' => $this->newComment,
+            'project_id' => $this->project->id,
+            'repository_id' => $this->repos->id,
+            'issue_number' => $issue->issue_number,
+            'github_comment_id' => $response['id'],
+            'issue_id' => $issue->id
+        ]);
+    }
+
+    public function createGithubComment(Account $account, string $repo, $issueNumber)
+    {
+        $response = (new CreateGithubComment)->create(
+            githubToken: $account->github_token,
+            accountName: $account->name,
+            repo: $repo,
+            issueNumber: $issueNumber,
+            comment: $this->newComment
+        );
+        return $response->status() === 201 ? $response->json() : null;
+    }
+
+    // private function addCommentToIssue($issueNumber, $comment)
+    // {
+    //     // $account = $this->project->accounts()->whereRelation('repositories', 'name', $this->selectedRepo)->first();
+    //     $account = $this->getAccountQuery()->whereRelation('repositories', 'name', $this->selectedRepo)->first();
+
+    //     $response = Http::withToken($account->github_token)
+    //         ->withHeaders(['Accept' => 'application/vnd.github.v3+json'])
+    //         ->post("https://api.github.com/repos/{$account->name}/{$this->selectedRepo}/issues/{$issueNumber}/comments", [
+    //             'body' => $comment,
+    //         ]);
+
+    //     return $response;
+
+    // }
+
+    public function showComments(Issue $issue)
+    {
+        $this->comments = $issue->comments;
         $this->dispatch('open-modal');
     }
 
-    public function showAddCommentModel($issueNumber)
+    public function showAddCommentModel(Issue $issue)
     {
-        $this->selectedIssueNumber = $issueNumber;
+        $this->selectedIssue = $issue;
         $this->dispatch('open-add-comment-modal');
+    }
+
+    public function showNewIssueModel()
+    {
+        $this->dispatch('open-new-issue-modal');
     }
 
     public function render()
     {
         return view('livewire.dashboard');
     }
+
+    public function createIssue()
+    {
+        $this->validate([
+            'title' => 'required|max:255'
+        ]);
+        try {
+            return DB::transaction(function () {
+                $accountFrom = $this->getAndRefreshAccount();
+
+                $primaryGithubIssue = $this->createGithubIssue(
+                    account: $accountFrom,
+                    repo: $this->selectedRepo
+                );
+
+                if (!$primaryGithubIssue) {
+                    throw new Exception('Failed to create primary GitHub issue');
+                }
+
+                $issue = $this->createLocalIssue($accountFrom, $this->repos, $primaryGithubIssue);
+
+                $this->handleSyncedIssue($accountFrom, $issue);
+
+                $this->handleSuccess();
+
+                return $issue;
+            });
+        } catch (Exception $e) {
+            $this->handleError($e);
+        }
+    }
+
+    private function getAndRefreshAccount(): Account
+    {
+        $account = $this->gitHubIntegrationAccount()?->accountFrom()?->first();
+        $this->refreshGitHubToken($account);
+
+        return $account;
+    }
+
+    private function createGithubIssue(Account $account, string $repo): ?array
+    {
+        $response = (new CreateGithubIssue)->create(
+            githubToken: $account->github_token,
+            accountName: $account->name,
+            repo: $repo,
+            title: $this->title,
+            description: $this->description,
+            labels: $this->getLabelsValue($this->labels)
+        );
+
+        return $response->status() === 201 ? $response->json() : null;
+    }
+
+    private function createLocalIssue(Account $account, Repository $repo, array $githubResponse): Issue
+    {
+        $issue = Issue::create([
+            'title' => $this->title,
+            'body' => $this->description,
+            'project_id' => $this->project->id,
+            'repository_id' => $repo->id,
+            'github_issue_id' => $githubResponse['id'],
+            'issue_number' => $githubResponse['number'],
+            'labels' => json_encode($this->labels),
+            'account_id' => $account->id,
+            'creator' => config('github.bot_name'),
+        ]);
+
+        return $issue;
+    }
+
+    private function handleSyncedIssue(Account $primaryAccount, Issue $primaryIssue, $isManualSync = false): void
+    {
+        $syncedAccount = $primaryAccount->syncedAccounts()?->first();
+        $integration = $this->project->gitHubIntegrations()->first();
+
+        if (!$isManualSync && !$this->shouldCreateSyncedIssue($syncedAccount, $integration)) {
+            return;
+        }
+
+        $this->refreshGitHubToken($syncedAccount);
+
+        $syncedResponse = $this->createGithubIssue(
+            account: $syncedAccount,
+            repo: $integration->repoTo?->name
+        );
+
+        if ($syncedResponse) {
+            $secondaryIssue = $this->createLocalIssue($syncedAccount, $integration->repoTo, $syncedResponse);
+            $this->createSyncedIssueRecord($primaryIssue->id, $secondaryIssue->id);
+            $primaryIssue->update(['is_synced' =>true]);
+        }
+    }
+
+    private function shouldCreateSyncedIssue(?Account $syncedAccount, ?GitHubIntegration $integration): bool
+    {
+        if (!$syncedAccount || !$integration) {
+            return false;
+        }
+
+        return !empty(array_intersect(
+            json_decode($integration->labels),
+            $this->labels
+        ));
+    }
+
+    private function createSyncedIssueRecord(int $primaryIssueId, int $secondaryIssueId): void
+    {
+        IssueSynced::create([
+            'from_issue' => $primaryIssueId,
+            'to_issue' => $secondaryIssueId,
+        ]);
+    }
+
+    private function handleSuccess(): void
+    {
+        $this->dispatch('issueCreatedSucessfully', 'Issue successfully created on GitHub.');
+        $this->resetForm();
+        // $this->fetchIssues();
+        $this->getIssues();
+    }
+
+    private function handleError(Exception $e): void
+    {
+        logger()->error('GitHub Issue Creation Failed', [
+            'error' => $e->getMessage(),
+            'repo' => $this->selectedRepo,
+            'project' => $this->project->id
+        ]);
+
+        session()->flash('error', 'Could not create issue. Please try again later.');
+    }
+
+    private function resetForm(): void
+    {
+        $this->reset(['title', 'description', 'labels']);
+    }
+
+
+    public function setvalues($labels, $description)
+    {
+        $this->labels = $labels;
+        $this->description = $description;
+    }
+
+    public function getLabelsValue(array $labels): array
+    {
+        return array_map(function ($label) {
+            return $this->allLabels[$label];
+        }, $labels);
+    }
+
+    public function syncIssue(Issue $issue)
+    {
+        $this->title = $issue->title;
+        $this->description = $issue->body;
+        $this->labels = json_decode($issue->getRawOriginal('labels'));
+        $this->handleSyncedIssue($this->getAndRefreshAccount(), $issue, true);
+        $this->dispatch('issueCreatedSucessfully', 'Issue successfully synced on GitHub.');
+        $this->getIssues();
+    }
+
+    public function hanlefFileUpload(Request $request)
+    {
+        $validatedData = $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+        $imagePath = $validatedData['image']->store('attachments', 's3', 'public');
+        $publicUrl = Storage::disk('s3')->url($imagePath);
+        return response()->json(['url' => $publicUrl, 'name' => $validatedData['image']->getClientOriginalName()]);
+    }
+
+    public function handleWebhook(Request $request)
+    {
+        $eventType = $request->header('X-GitHub-Event');
+        if($eventType === 'issues')
+        {
+            $payload = $request->all();
+            $issue = issue::where('github_issue_id', $payload['issue']['id'])->first();
+            if($issue)
+            {
+                $issue->update(['status' => $payload['issue']['state']]);
+            }
+        }
+    }
+
 }
 // Check if the response is successful
 // Return the JSON response from the API

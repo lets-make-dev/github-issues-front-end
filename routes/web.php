@@ -1,12 +1,19 @@
 <?php
 
+use App\Livewire\Dashboard;
 use Illuminate\Support\Facades\Route;
+use Livewire\Livewire;
 
-Route::get('/', \App\Livewire\Dashboard::class)->middleware('auth');
+Route::get('/', function(){
+    return redirect()->route('projects.index');
+})->middleware('auth');
+// Route::get('/', \App\Livewire\Dashboard::class)->middleware('auth');
 
 Route::get('/main', \App\Livewire\Dashboard::class)->name('main');
 
 Route::get('/auth/github/callback', [\App\Http\Controllers\GitHubController::class, 'handleGitHubCallback']);
+
+Route::post('/webhook', [\App\Livewire\Dashboard::class, 'handleWebhook']);
 
 //Route::get('/github/connect', function () {
 //    return redirect()->to('https://github.com/apps/hubbub-the-missing-front-end/installations/new');
@@ -34,6 +41,8 @@ Route::middleware([
 
     Route::get('/projects/{project}', \App\Livewire\Dashboard::class)
         ->name('projects.show');
+
+    Route::post('/upload-image', [\App\Livewire\Dashboard::class, 'hanlefFileUpload']);
 
     //    Route::get('/dashboard', function () {
     //        return view('dashboard');
