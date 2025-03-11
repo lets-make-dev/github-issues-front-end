@@ -278,7 +278,7 @@ class ProjectSettings extends Component
     {
         $this->cacheProjectId($project->id);
 
-        return redirect()->away('https://github.com/apps/hubbub-the-missing-front-end/installations/new');
+        return redirect()->away(config('github.app_url'));
     }
 
     public function syncAccount($data)
