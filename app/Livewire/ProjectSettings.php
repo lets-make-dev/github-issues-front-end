@@ -2,12 +2,15 @@
 
 namespace App\Livewire;
 
+use App\Actions\GitHub\GetLatestLabels;
 use App\Concerns\GithubApiManager;
 use App\Concerns\ProjectSelectionCacheManager;
+use App\Jobs\StoreRepoLabels;
 use App\Models\Account;
 use App\Models\Project;
 use App\Models\Repository;
 use App\Models\GitHubIntegration;
+use App\Models\RepoLabel;
 use Illuminate\Support\Facades\Http;
 use Livewire\Component;
 
@@ -59,7 +62,9 @@ class ProjectSettings extends Component
 
     public string $firstSelectedRepoName = '';
 
-    protected $listeners = ['firstAccountSelected', 'secondAccountSelected', 'selectLables', 'syncAccount'];
+    public Repository $selectedFirstRepository;
+
+    protected $listeners = ['firstAccountSelected', 'secondAccountSelected', 'selectLables', 'syncAccount', 'setSelectedFirstRepository'];
 
     public function mount(Project $project, $tab = 'general'): void
     {
@@ -79,6 +84,7 @@ class ProjectSettings extends Component
         $integration = GitHubIntegration::with(['repoTo', 'repoFrom'])->where('project_id', $this->project->id)->first();
         if ($integration) {
             $this->selectedFirstAccount = $integration->account_from;
+            $this->setSelectedFirstRepository($integration->repoFrom);
             $this->selectedSecondAccount = $integration->account_to;
             $this->firstSelectedRepo = $integration->repoFrom()->pluck('name', 'id')->toArray();
             $this->secondSelectedRepo = $integration->repoTo()->pluck('name', 'id')->toArray();
@@ -101,11 +107,15 @@ class ProjectSettings extends Component
         $this->secondAccountRepositories = $this->loadRepositories($this->selectedSecondAccount);
     }
 
+    public function setSelectedFirstRepository(Repository $repo)
+    {
+        $this->selectedFirstRepository = $repo;
+    }
+
     public function selectLables(Repository $repo)
     {
         $labels = $repo->labels()->pluck('name', 'id')->toArray();
-        if(!$labels)
-        {
+        if (!$labels) {
             $this->selectedLables = [];
             return;
         }
@@ -157,8 +167,35 @@ class ProjectSettings extends Component
             }
         } catch (\Exception $e) {
             $this->dispatch('error', 'An error occurred while fetching repositories: ' . $e->getMessage());
-
         }
+    }
+
+    public function refreshRepoLabel(): void
+    {
+        $account = Account::find($this->selectedFirstAccount);
+        $repo = $this->selectedFirstRepository;
+        $labels = (new GetLatestLabels)->getLabel($this->refreshGitHubToken($account), $account->name, $repo->name);
+        $labels = collect($labels)->map(function ($label) use ($repo) {
+            return [
+                'label_id'      => $label['id'],
+                'name'          => $label['name'],
+                'color'         => $label['color'],
+                'description'   => $label['description'] ?? null,
+                'repository_id' => $repo?->id,
+            ];
+        })->toArray();
+
+        foreach ($labels as $label) {
+            RepoLabel::updateOrCreate(
+                [
+                    'label_id'      => $label['label_id'],
+                    'repository_id' => $label['repository_id'],
+                ],
+                $label
+            );
+        }
+
+        $this->selectLables($repo);
     }
 
     public function updateGeneralSettings(): void
@@ -221,7 +258,7 @@ class ProjectSettings extends Component
 
     public function disconnectRepository($repoId): void
     {
-//        $accountId = $this->project->repositories()->find($repoId)->account_id;
+        //        $accountId = $this->project->repositories()->find($repoId)->account_id;
         $this->project->repositories()->detach($repoId);
         $this->loadConnectedRepositories();
         $this->updateRepositories();
@@ -255,9 +292,9 @@ class ProjectSettings extends Component
     {
         $this->connectedRepositories = $this->project->repositories->load('account:id,name')->toArray();
 
-//        if ($this->connectedRepositories) {
-//            ${$this->selectedFirstAccount == $accountId ? 'firstAccountRepositories' : 'secondAccountRepositories'} = $this->loadRepositories($accountId);
-//        }
+        //        if ($this->connectedRepositories) {
+        //            ${$this->selectedFirstAccount == $accountId ? 'firstAccountRepositories' : 'secondAccountRepositories'} = $this->loadRepositories($accountId);
+        //        }
     }
 
     public function render()

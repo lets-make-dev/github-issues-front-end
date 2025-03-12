@@ -74,7 +74,7 @@
 
         @foreach($this->groupedIssues as $group)
             <div class="mb-8">
-                <h3 class="text-xl font-semibold mb-4 pb-2 border-b-2 border-gray-300 dark:border-gray-600">{{ $group['name'] ?: ($showClosed ? 'Closed' : 'All') }}</h3>
+                <h3 class="text-xl font-semibold mb-4 pb-2 border-b-2 border-gray-300 dark:border-gray-600 dark:text-white">{{ $group['name'] ?: ($showClosed ? 'Closed' : 'All') }}</h3>
                 <x-dashboard.issues.list :issues="$group['issues']" :repo-name="$selectedRepo"/>
             </div>
         @endforeach

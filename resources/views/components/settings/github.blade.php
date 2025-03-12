@@ -110,7 +110,7 @@
                                 aria-activedescendant="listbox-option-3" :class="{ 'pointer-events-none opacity-50': isIntegrated }">
                                 {{--                        <span x-text="JSON.stringify(filteredFirstAccountRepositories)"></span>--}}
                                 <template x-for="(value, key) in filteredFirstAccountRepositories">
-                                    <li @click="selectedRepo = value; firstRepoOpen = false; firstSearchTerm = value; $wire.selectLables(key); selectedFirstRepo = key"
+                                    <li @click="selectedRepo = value; firstRepoOpen = false; firstSearchTerm = value; $wire.selectLables(key); selectedFirstRepo = key; $wire.setSelectedFirstRepository(key)"
                                         class="text-gray-900 dark:text-white cursor-default select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700"
                                         role="option">
                                         <span class="block truncate" x-text="value"></span>
@@ -287,7 +287,7 @@
                                     class="text-gray-500 cursor-default select-none relative py-2 pl-3 pr-9">
                                     No matching labels found
                                 </li>
-                                <li wire:click="refreshRepos(selectedFirstAccountId)"
+                                <li wire:click="refreshRepoLabel()"
                                     class="text-gray-900 dark:text-white select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                                     role="option">
                                     <span class="block truncate">Refresh</span>
@@ -410,7 +410,7 @@
                     }
                 },
                 async filteredRepoLabels() {
-                    // console.log('selectedLables', this.selectedLables);
+                    console.log('selectedLables', this.selectedLables);
                     if (Object.keys(this.selectedLables).length) {
                         this.filteredRepositorieLabels = await this.filterRepositorieLabels(this.selectedLables);
                     }

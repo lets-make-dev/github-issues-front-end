@@ -137,6 +137,7 @@ class Dashboard extends Component
         }
 
         $this->issues = $this->issues->get()->toArray();
+        $this->issuesCopy = $this->issues;
     }
 
     // Reusable query method
@@ -245,7 +246,6 @@ class Dashboard extends Component
                     'per_page' => 100,
                 ])
                 ->throw();
-
             $this->issues = collect($response->json())
                 ->filter(function ($issue) {
                     return empty($this->search) || stripos($issue['title'], $this->search) !== false;
@@ -606,6 +606,3 @@ class Dashboard extends Component
     }
 
 }
-// Check if the response is successful
-// Return the JSON response from the API
-// Throw an exception if the API request fails
